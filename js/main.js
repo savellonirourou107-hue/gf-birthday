@@ -93,12 +93,7 @@ musicButton.addEventListener('click', toggleMusic);
 document.addEventListener('DOMContentLoaded', () => {
     showRandomMessage();
     initFloatingHearts();
-    // 自动播放音乐
-    bgm.play().catch(error => {
-        console.log('自动播放失败，需要用户交互后播放');
-    });
-    isMusicPlaying = true;
-    musicButton.textContent = '🎶';
+    // 不自动播放，等用户关闭弹窗后再播
 });
 
 // 添加打字机效果
@@ -245,4 +240,16 @@ window.addEventListener('resize', () => {
     if (isMessageBoardOpen) {
         messageBoardToggle.style.right = window.innerWidth <= 768 ? '10px' : '400px';
     }
+});
+
+// 开场弹窗逻辑
+const birthdayModal = document.getElementById('birthday-modal');
+const modalStartBtn = document.getElementById('modal-start-btn');
+
+modalStartBtn.addEventListener('click', () => {
+    birthdayModal.classList.add('hidden');
+    // 弹窗关闭后播放音乐
+    bgm.play().catch(() => {});
+    isMusicPlaying = true;
+    musicButton.textContent = '🎶';
 }); 
