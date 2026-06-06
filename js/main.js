@@ -242,9 +242,25 @@ window.addEventListener('resize', () => {
     }
 });
 
-// 开场弹窗逻辑
+// 信封开屏逻辑
+const envelopeScreen = document.getElementById('envelope-screen');
+const envelope = document.querySelector('.envelope');
+const envelopeWrapper = document.querySelector('.envelope-wrapper');
 const birthdayModal = document.getElementById('birthday-modal');
 const modalStartBtn = document.getElementById('modal-start-btn');
+
+envelopeWrapper.addEventListener('click', () => {
+    // 先打开信封
+    envelope.classList.add('open');
+    // 延迟后收起信封，显示弹窗
+    setTimeout(() => {
+        envelopeScreen.classList.add('fade-out');
+        setTimeout(() => {
+            envelopeScreen.style.display = 'none';
+            birthdayModal.classList.remove('hidden');
+        }, 800);
+    }, 800);
+});
 
 // 问答系统
 const quizSection = document.getElementById('quiz-section');
