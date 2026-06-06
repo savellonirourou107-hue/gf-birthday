@@ -321,4 +321,24 @@ modalStartBtn.addEventListener('click', () => {
 
 quizContinueBtn.addEventListener('click', () => {
     document.querySelector('.love-message').scrollIntoView({ behavior: 'smooth' });
-}); 
+});
+
+// 微信浏览器音乐自动播放兼容
+function autoPlayMusic() {
+    bgm.play().then(() => {
+        isMusicPlaying = true;
+        musicButton.textContent = '🎶';
+    }).catch(() => {});
+}
+
+if (typeof WeixinJSBridge !== 'undefined') {
+    WeixinJSBridge.invoke('getNetworkType', {}, () => {
+        autoPlayMusic();
+    });
+} else {
+    document.addEventListener('WeixinJSBridgeReady', () => {
+        WeixinJSBridge.invoke('getNetworkType', {}, () => {
+            autoPlayMusic();
+        });
+    }, false);
+} 
