@@ -246,10 +246,79 @@ window.addEventListener('resize', () => {
 const birthdayModal = document.getElementById('birthday-modal');
 const modalStartBtn = document.getElementById('modal-start-btn');
 
+// 问答系统
+const quizSection = document.getElementById('quiz-section');
+const quizQuestion = document.getElementById('quiz-question');
+const quizOptions = document.getElementById('quiz-options');
+const quizResult = document.getElementById('quiz-result');
+const quizContinueBtn = document.getElementById('quiz-continue-btn');
+const quizDots = document.querySelectorAll('.quiz-dot');
+
+const quizData = [
+    {
+        question: 'Q1：小团觉得阳怎么样？',
+        options: ['A. 很帅', 'B. 超级帅', 'C. 每天都更帅 😎']
+    },
+    {
+        question: 'Q2：阳最喜欢小团的什么？',
+        options: ['A. 笑起来的样子', 'B. 每一个样子', 'C. 包括但不限于以上所有 ✨']
+    },
+    {
+        question: 'Q3：阳现在最想做什么？',
+        options: ['A. 抱抱小团', 'B. 亲亲小团', 'C. 当然是全部都要 💕']
+    }
+];
+
+let currentQuestion = 0;
+
+function showQuestion(index) {
+    if (index >= quizData.length) {
+        showQuizResult();
+        return;
+    }
+    quizDots.forEach((dot, i) => {
+        dot.className = 'quiz-dot';
+        if (i < index) dot.classList.add('done');
+        if (i === index) dot.classList.add('active');
+    });
+    const q = quizData[index];
+    quizQuestion.textContent = q.question;
+    quizOptions.innerHTML = q.options.map(opt =>
+        `<div class="quiz-option">${opt}</div>`
+    ).join('');
+    quizOptions.querySelectorAll('.quiz-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+            btn.classList.add('correct-flash');
+            setTimeout(() => {
+                currentQuestion++;
+                showQuestion(currentQuestion);
+            }, 600);
+        });
+    });
+}
+
+function showQuizResult() {
+    quizQuestion.style.display = 'none';
+    quizOptions.style.display = 'none';
+    quizResult.classList.remove('hidden');
+    quizDots.forEach(d => { d.className = 'quiz-dot done'; });
+}
+
+function startQuiz() {
+    quizSection.classList.remove('hidden');
+    currentQuestion = 0;
+    showQuestion(0);
+    quizSection.scrollIntoView({ behavior: 'smooth' });
+}
+
 modalStartBtn.addEventListener('click', () => {
     birthdayModal.classList.add('hidden');
-    // 弹窗关闭后播放音乐
+    setTimeout(startQuiz, 300);
     bgm.play().catch(() => {});
     isMusicPlaying = true;
     musicButton.textContent = '🎶';
+});
+
+quizContinueBtn.addEventListener('click', () => {
+    document.querySelector('.love-message').scrollIntoView({ behavior: 'smooth' });
 }); 

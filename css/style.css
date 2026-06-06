@@ -611,3 +611,122 @@ body {
 .birthday-modal.hidden {
     display: none;
 }
+
+/* 问答系统样式 */
+.quiz-section {
+    margin: 2rem 0;
+}
+
+.quiz-section.hidden {
+    display: none;
+}
+
+.quiz-card {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 2rem 1.5rem;
+    backdrop-filter: blur(5px);
+}
+
+.quiz-progress {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.quiz-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    transition: all 0.3s ease;
+}
+
+.quiz-dot.active {
+    background: #ff4b6e;
+    box-shadow: 0 0 10px rgba(255, 75, 110, 0.6);
+}
+
+.quiz-dot.done {
+    background: #ff4b6e;
+}
+
+.quiz-question {
+    font-size: 1.3rem;
+    color: #fff;
+    text-align: center;
+    margin-bottom: 1.2rem;
+    font-family: 'ZCOOL XiaoWei', serif;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.quiz-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.quiz-option {
+    background: rgba(255, 255, 255, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 15px;
+    padding: 1rem 1.2rem;
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    font-family: 'ZCOOL XiaoWei', serif;
+    backdrop-filter: blur(5px);
+}
+
+.quiz-option:hover {
+    background: rgba(255, 255, 255, 0.5);
+    transform: scale(1.02);
+    border-color: #ff4b6e;
+    box-shadow: 0 5px 15px rgba(255, 75, 110, 0.3);
+}
+
+.quiz-option.correct-flash {
+    background: #ff4b6e !important;
+    border-color: #ff4b6e !important;
+    animation: flash 0.5s ease;
+}
+
+@keyframes flash {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.quiz-result {
+    text-align: center;
+    color: #fff;
+}
+
+.quiz-result.hidden {
+    display: none;
+}
+
+.result-icon {
+    font-size: 4rem;
+    margin-bottom: 0.5rem;
+    animation: bounce 0.6s infinite alternate;
+}
+
+.quiz-result h3 {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+    font-family: 'ZCOOL XiaoWei', serif;
+}
+
+.quiz-result p {
+    font-size: 1.1rem;
+    margin-bottom: 0.3rem;
+}
+
+.result-sub {
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 1.5rem !important;
+}
