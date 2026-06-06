@@ -610,6 +610,53 @@ body {
     transform: rotateX(180deg);
 }
 
+/* 信封打开后光芒 */
+.envelope-glow {
+    position: absolute;
+    top: 10%;
+    left: 10%;
+    width: 80%;
+    height: 60%;
+    background: radial-gradient(ellipse, rgba(255, 220, 180, 0.9) 0%, rgba(255, 180, 150, 0.4) 50%, transparent 70%);
+    border-radius: 50%;
+    z-index: 0;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+}
+
+.envelope.open .envelope-glow {
+    opacity: 1;
+    animation: glowPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.3); opacity: 1; }
+}
+
+/* 信封整体放大消失 */
+.envelope-screen.opened .envelope {
+    animation: envelopeGrow 1s ease forwards;
+}
+
+@keyframes envelopeGrow {
+    0% { transform: scale(1); filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.5)); }
+    50% { transform: scale(1.15); filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.3)); }
+    100% { transform: scale(1.5); opacity: 0; filter: drop-shadow(0 40px 80px rgba(0, 0, 0, 0)); }
+}
+
+/* 背景渐变过渡 */
+.envelope-screen.transition-bg {
+    animation: bgTransition 1.2s ease forwards;
+}
+
+@keyframes bgTransition {
+    0% { background: radial-gradient(ellipse at center, #3d2b2b 0%, #1a1010 100%); }
+    50% { background: radial-gradient(ellipse at center, #6b3a3a 0%, #2d1f1f 100%); }
+    100% { background: radial-gradient(ellipse at center, #ff9a9e 0%, #fad0c4 100%); }
+}
+
 /* 蜡封 */
 .envelope-seal {
     position: absolute;

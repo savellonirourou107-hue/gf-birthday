@@ -250,14 +250,17 @@ const birthdayModal = document.getElementById('birthday-modal');
 const modalStartBtn = document.getElementById('modal-start-btn');
 
 envelopeFloat.addEventListener('click', () => {
+    // 第1步：信封封口翻开
     envelope.classList.add('open');
+    // 第2步：光芒亮起 + 信封放大消失 + 背景渐变
     setTimeout(() => {
-        envelopeScreen.classList.add('fade-out');
+        envelopeScreen.classList.add('opened', 'transition-bg');
+        // 第3步：动画结束后显示弹窗
         setTimeout(() => {
             envelopeScreen.style.display = 'none';
             birthdayModal.classList.remove('hidden');
-        }, 1000);
-    }, 1000);
+        }, 1200);
+    }, 1200);
 });
 
 // 问答系统
