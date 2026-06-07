@@ -299,7 +299,6 @@ envelopeFloat.addEventListener('click', () => {
             birthdayModal.classList.remove('hidden');
         }, 400);
     }, 3600);
-    }, 3850);
 });
 
 // 问答系统
