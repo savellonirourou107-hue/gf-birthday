@@ -269,7 +269,7 @@ window.addEventListener('resize', () => {
 
 // 信封开屏逻辑
 const envelopeScreen = document.getElementById('envelope-screen');
-const envelope = document.querySelector('.envelope');
+const envelopeSvg = document.querySelector('.envelope-svg');
 const envelopeFloat = document.querySelector('.envelope-float');
 const birthdayModal = document.getElementById('birthday-modal');
 const modalStartBtn = document.getElementById('modal-start-btn');
@@ -281,20 +281,24 @@ envelopeFloat.addEventListener('click', () => {
     envelopeStarted = true;
 
     envelopeScreen.classList.add('reading');
-    envelope.classList.add('opening');
+    envelopeSvg.classList.add('opening');
 
     setTimeout(() => {
-        envelope.classList.add('extracting');
+        envelopeSvg.classList.add('extracting');
     }, 900);
 
     setTimeout(() => {
-        envelope.classList.add('departing');
-        envelopeScreen.classList.add('opened', 'transition-bg');
+        envelopeFloat.classList.add('departing');
+        envelopeScreen.classList.add('transition-bg');
     }, 2600);
 
     setTimeout(() => {
-        envelopeScreen.style.display = 'none';
-        birthdayModal.classList.remove('hidden');
+        envelopeScreen.classList.add('fade-out');
+        setTimeout(() => {
+            envelopeScreen.style.display = 'none';
+            birthdayModal.classList.remove('hidden');
+        }, 400);
+    }, 3600);
     }, 3850);
 });
 
