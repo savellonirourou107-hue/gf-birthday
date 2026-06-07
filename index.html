@@ -11,137 +11,43 @@
     <meta property="og:type" content="website">
     <meta property="og:title" content="小团，生日快乐！">
     <meta property="og:description" content="小团，生日快乐。阳写给你的一封信。">
-    <meta property="og:image" content="https://yangyangtuan.github.io/gf-birthday/assets/images/preview.jpg">
-    <meta property="og:url" content="https://yangyangtuan.github.io/gf-birthday/">
-    <link rel="canonical" href="https://yangyangtuan.github.io/gf-birthday/">
+    <meta property="og:image" content="https://savellonirourou107-hue.github.io/gf-birthday/assets/images/preview.jpg">
+    <meta property="og:url" content="https://savellonirourou107-hue.github.io/gf-birthday/">
+    <link rel="canonical" href="https://savellonirourou107-hue.github.io/gf-birthday/">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='52'%3E%F0%9F%92%9D%3C/text%3E%3C/svg%3E">
     <title>💝 小团，生日快乐！</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="intro-pending">
+    <!-- 背景粒子层 -->
+    <div id="page-particles" class="particles-layer" aria-hidden="true"></div>
+
+    <!-- 进入页面蒙版 -->
+    <div id="intro-mask" class="intro-mask" role="button" tabindex="0" aria-label="进入生日页面">
+        <div class="intro-heart" aria-hidden="true">♥</div>
+        <p class="intro-copy">轻轻点一下，拆开这封信</p>
+    </div>
+
     <!-- 信封开屏 -->
     <div id="envelope-screen" class="envelope-screen">
         <div class="envelope-wrapper">
             <div class="envelope-float">
-                <svg class="envelope-svg" viewBox="0 0 400 320" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <!-- 纸张纹理 -->
-                        <filter id="paper-texture" x="0%" y="0%" width="100%" height="100%">
-                            <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="5" result="noise" />
-                            <feColorMatrix type="saturate" values="0" in="noise" result="gray" />
-                            <feComponentTransfer in="gray" result="soft">
-                                <feFuncA type="linear" slope="0.07" />
-                            </feComponentTransfer>
-                            <feBlend in="SourceGraphic" in2="soft" mode="multiply" />
-                        </filter>
-                        <!-- 柔光纹理 -->
-                        <filter id="paper-subtle" x="0%" y="0%" width="100%" height="100%">
-                            <feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="3" result="noise" />
-                            <feColorMatrix type="saturate" values="0" in="noise" result="gray" />
-                            <feComponentTransfer in="gray" result="soft">
-                                <feFuncA type="linear" slope="0.04" />
-                            </feComponentTransfer>
-                            <feBlend in="SourceGraphic" in2="soft" mode="multiply" />
-                        </filter>
-                        <!-- 信封投影 -->
-                        <filter id="envelope-shadow" x="-10%" y="-10%" width="130%" height="140%">
-                            <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#0a0505" flood-opacity="0.55" />
-                            <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0a0505" flood-opacity="0.25" />
-                        </filter>
-                        <!-- 信纸投影 -->
-                        <filter id="letter-shadow" x="-10%" y="-10%" width="120%" height="130%">
-                            <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#2d1510" flood-opacity="0.35" />
-                        </filter>
-                        <!-- 渐变 -->
-                        <linearGradient id="paper-grad" x1="0" y1="0" x2="0.3" y2="0.7">
-                            <stop offset="0%" stop-color="#faf2e8" />
-                            <stop offset="100%" stop-color="#e8d2bc" />
-                        </linearGradient>
-                        <linearGradient id="flap-grad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stop-color="#fdf6ee" />
-                            <stop offset="25%" stop-color="#f5e4d2" />
-                            <stop offset="100%" stop-color="#dbbc9f" />
-                        </linearGradient>
-                        <linearGradient id="pocket-grad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stop-color="#f2ddcb" />
-                            <stop offset="100%" stop-color="#d4af94" />
-                        </linearGradient>
-                        <linearGradient id="seal-grad" x1="0.3" y1="0.2" x2="0.7" y2="0.8">
-                            <stop offset="0%" stop-color="#e85570" />
-                            <stop offset="40%" stop-color="#c43850" />
-                            <stop offset="100%" stop-color="#8b1a35" />
-                        </linearGradient>
-                        <linearGradient id="letter-grad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stop-color="#fffef9" />
-                            <stop offset="100%" stop-color="#f5e8d6" />
-                        </linearGradient>
-                        <radialGradient id="glow-grad" cx="50%" cy="48%" r="55%">
-                            <stop offset="0%" stop-color="rgba(255,218,174,0.55)" />
-                            <stop offset="60%" stop-color="rgba(255,218,174,0.22)" />
-                            <stop offset="100%" stop-color="rgba(255,218,174,0)" />
-                        </radialGradient>
-                    </defs>
-
-                    <!-- 信封背板 -->
-                    <g filter="url(#envelope-shadow)">
-                        <rect class="env-back" x="20" y="60" width="360" height="230" rx="12" fill="url(#paper-grad)" filter="url(#paper-texture)" />
-                    </g>
-                    <!-- 开封后的柔光，放在纸层后面 -->
-                    <ellipse class="env-glow" cx="200" cy="150" rx="132" ry="82" fill="url(#glow-grad)" opacity="0" />
-                    <!-- 打开后留在信纸背后的翻盖 -->
-                    <g class="env-open-flap-group">
-                        <path d="M20,62 L200,-44 L380,62 L358,78 L200,10 L42,78 Z" fill="url(#flap-grad)" />
-                        <path d="M42,78 L200,10 L358,78" fill="none" stroke="rgba(126,82,62,0.14)" stroke-width="1" />
-                    </g>
-                    <!-- 背板内框装饰 -->
-                    <rect class="env-border" x="42" y="90" width="316" height="178" rx="4" fill="none" stroke="rgba(139,107,94,0.25)" stroke-width="1" stroke-dasharray="0" />
-
-                    <!-- 信纸 -->
-                    <g class="env-letter-group" filter="url(#letter-shadow)">
-                        <rect class="env-letter-rect" x="48" y="76" width="304" height="176" rx="6" fill="url(#letter-grad)" filter="url(#paper-subtle)" />
-                        <!-- 信纸横线 -->
-                        <line x1="72" y1="110" x2="328" y2="110" stroke="rgba(180,150,130,0.3)" stroke-width="0.8" />
-                        <line x1="72" y1="130" x2="328" y2="130" stroke="rgba(180,150,130,0.3)" stroke-width="0.8" />
-                        <line x1="72" y1="150" x2="310" y2="150" stroke="rgba(180,150,130,0.3)" stroke-width="0.8" />
-                        <!-- 信纸文字 -->
-                        <text class="letter-text title-text" x="200" y="104" text-anchor="middle" fill="#9d314a" font-size="15" font-family="Georgia, 'ZCOOL XiaoWei', serif">小团，生日快乐</text>
-                        <text class="letter-text body-text" x="200" y="126" text-anchor="middle" fill="#7b4b42" font-size="12" font-family="Georgia, 'ZCOOL XiaoWei', serif">今天这封信，只写给你</text>
-                    </g>
-
-                    <!-- 左侧折片 -->
-                    <path class="env-side env-side-left" d="M20,60 L20,290 Q20,300 30,300 L200,300 L200,60 Z" fill="url(#pocket-grad)" filter="url(#paper-subtle)" opacity="0.92" />
-                    <!-- 右侧折片 -->
-                    <path class="env-side env-side-right" d="M380,60 L380,290 Q380,300 370,300 L200,300 L200,60 Z" fill="url(#pocket-grad)" filter="url(#paper-subtle)" opacity="0.92" />
-
-                    <!-- 前口袋 V 形 -->
-                    <path class="env-pocket" d="M20,160 L200,280 L380,160 L380,290 Q380,300 370,300 L30,300 Q20,300 20,290 Z" fill="url(#pocket-grad)" filter="url(#paper-texture)" />
-
-                    <!-- 口袋 V 形暗边 -->
-                    <path class="env-pocket-rim" d="M20,160 L200,280 L380,160" fill="none" stroke="rgba(120,80,60,0.2)" stroke-width="1.5" />
-                    <path class="env-pocket-highlight" d="M34,170 L200,278 L366,170" fill="none" stroke="rgba(255,248,238,0.28)" stroke-width="1" />
-                    <path class="env-side-crease" d="M55,96 L200,280 M345,96 L200,280" fill="none" stroke="rgba(104,68,52,0.09)" stroke-width="1" />
-
-                    <!-- 翻盖打开后的阴影 -->
-                    <ellipse class="env-lip-shadow" cx="200" cy="160" rx="140" ry="15" fill="rgba(40,15,8,0.3)" filter="url(#letter-shadow)" opacity="0" />
-
-                    <!-- 封口翻盖 -->
-                    <g class="env-flap-group" transform-origin="200 0">
-                        <path class="env-flap-path" d="M20,60 Q20,58 22,58 L200,155 L378,58 Q380,58 380,60 L380,62 Q380,56 378,54 L200,150 L22,54 Q20,56 20,62 Z" fill="url(#flap-grad)" filter="url(#paper-texture)" />
-                        <!-- 翻盖覆盖实际区域 -->
-                        <path d="M20,58 L200,158 L380,58 L380,0 L20,0 Z" fill="url(#flap-grad)" filter="url(#paper-texture)" />
-                    </g>
-
-                    <!-- 蜡封 -->
-                    <g class="env-seal-group">
-                        <circle cx="200" cy="155" r="24" fill="rgba(0,0,0,0.18)" filter="url(#letter-shadow)" />
-                        <circle class="env-seal-circle" cx="200" cy="155" r="22" fill="url(#seal-grad)" />
-                        <circle cx="200" cy="155" r="22" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1" />
-                        <text class="env-seal-heart" x="200" y="161" text-anchor="middle" fill="rgba(255,255,255,0.75)" font-size="18">♥</text>
-                    </g>
-
-                    <!-- 收件人 -->
-                    <text class="env-to-text" x="200" y="242" text-anchor="middle" fill="rgba(112,75,64,0.9)" font-size="16" font-family="Georgia, 'ZCOOL XiaoWei', serif" letter-spacing="6">小团 亲启</text>
-                </svg>
+                <div class="css-envelope" role="button" tabindex="0" aria-label="打开信封">
+                    <div class="css-envelope-back"></div>
+                    <div class="css-letter">
+                        <p class="css-letter-title">小团，生日快乐</p>
+                        <p class="css-letter-sub">今天这封信，只写给你</p>
+                    </div>
+                    <div class="css-envelope-flap"></div>
+                    <div class="css-envelope-left"></div>
+                    <div class="css-envelope-right"></div>
+                    <div class="css-envelope-pocket"></div>
+                    <div class="css-envelope-seal">♥</div>
+                    <p class="css-envelope-to">小团 亲启</p>
+                </div>
             </div>
             <p class="envelope-hint">点 击 打 开 信 件</p>
         </div>
@@ -221,17 +127,21 @@
         <div class="album-section">
             <div class="album-container">
                 <div class="album">
-                    <div class="photo-card" style="--i:1">
+                    <div class="photo-card" style="--r:-4deg">
                         <img src="assets/images/photo1.jpg" alt="照片1">
+                        <p class="polaroid-caption">第一次心动</p>
                     </div>
-                    <div class="photo-card" style="--i:2">
+                    <div class="photo-card" style="--r:3deg">
                         <img src="assets/images/photo2.jpg" alt="照片2">
+                        <p class="polaroid-caption">想把今天留住</p>
                     </div>
-                    <div class="photo-card" style="--i:3">
+                    <div class="photo-card" style="--r:-2deg">
                         <img src="assets/images/photo3.jpg" alt="照片3">
+                        <p class="polaroid-caption">和你有关的温柔</p>
                     </div>
-                    <div class="photo-card" style="--i:4">
+                    <div class="photo-card" style="--r:5deg">
                         <img src="assets/images/photo4.jpg" alt="照片4">
+                        <p class="polaroid-caption">生日快乐，小团</p>
                     </div>
                 </div>
             </div>
@@ -257,15 +167,21 @@
     </div>
 
     <!-- 音乐控制 -->
-    <div class="music-control">
+    <div class="music-control" id="music-player">
         <audio id="bgm" loop>
             <source src="assets/music/love.mp3" type="audio/mpeg">
         </audio>
-        <button id="music-btn" class="music-btn" title="背景音乐">🎵</button>
+        <button id="music-toggle" class="music-toggle" title="展开音乐播放器">
+            <span class="music-disc">♪</span>
+        </button>
+        <div class="music-panel" aria-label="背景音乐播放器">
+            <button id="music-btn" class="music-play-btn" title="播放或暂停">▶</button>
+            <div class="music-progress" aria-hidden="true">
+                <span id="music-progress-bar"></span>
+            </div>
+            <span id="music-time" class="music-time">0:00</span>
+        </div>
     </div>
-
-    <!-- 飘落的爱心背景 -->
-    <div class="hearts-bg"></div>
 
     <script src="js/main.js"></script>
 </body>

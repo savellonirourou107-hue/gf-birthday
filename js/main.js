@@ -21,51 +21,66 @@ const loveMessages = [
 const messageElement = document.getElementById('message');
 const refreshButton = document.getElementById('refresh-btn');
 const musicButton = document.getElementById('music-btn');
+const musicToggle = document.getElementById('music-toggle');
+const musicPlayer = document.getElementById('music-player');
+const musicProgressBar = document.getElementById('music-progress-bar');
+const musicTime = document.getElementById('music-time');
 const bgm = document.getElementById('bgm');
-const heartsBackground = document.querySelector('.hearts-bg');
-const maxFloatingHearts = 18;
+const particlesLayer = document.getElementById('page-particles');
+const introMask = document.getElementById('intro-mask');
+const particleCount = 32;
+let typeTimer = null;
+let hasTypedInitialMessage = false;
 
 // 显示随机情话的函数
 function showRandomMessage() {
     const randomIndex = Math.floor(Math.random() * loveMessages.length);
-    messageElement.style.opacity = '0';
-    messageElement.style.transform = 'translateY(20px)';
-    
-    setTimeout(() => {
-        messageElement.style.opacity = '1';
-        messageElement.style.transform = 'translateY(0)';
-        typeWriter(messageElement, loveMessages[randomIndex], 150);
-    }, 500);
+    messageElement.classList.add('visible');
+    typeWriter(messageElement, loveMessages[randomIndex], 80);
 }
 
-// 创建飘落的爱心
-function createFloatingHeart() {
-    if (heartsBackground.children.length >= maxFloatingHearts) return;
+// 初始化背景粒子
+function initFloatingParticles() {
+    if (!particlesLayer || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    particlesLayer.innerHTML = '';
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('span');
+        const isHeart = Math.random() > 0.45;
+        const size = Math.round(Math.random() * 12 + 8);
+        particle.className = `particle ${isHeart ? 'heart' : 'petal'}`;
+        particle.textContent = isHeart ? '♥' : '';
+        particle.setAttribute('aria-hidden', 'true');
+        particle.style.setProperty('--x', `${Math.random() * 100}vw`);
+        particle.style.setProperty('--size', `${size}px`);
+        particle.style.setProperty('--opacity', (Math.random() * 0.4 + 0.4).toFixed(2));
+        particle.style.setProperty('--duration', `${(Math.random() * 12 + 14).toFixed(1)}s`);
+        particle.style.setProperty('--sway-duration', `${(Math.random() * 3 + 4).toFixed(1)}s`);
+        particle.style.setProperty('--delay', `${(-Math.random() * 18).toFixed(1)}s`);
+        particlesLayer.appendChild(particle);
+    }
+}
 
-    const heart = document.createElement('span');
-    heart.textContent = '❤';
-    heart.setAttribute('aria-hidden', 'true');
-    heart.style.cssText = `
-        position: fixed;
-        font-size: ${Math.random() * 20 + 10}px;
-        color: rgba(255, 75, 110, ${Math.random() * 0.5 + 0.3});
-        left: ${Math.random() * 100}vw;
-        top: -20px;
-        animation: float ${Math.random() * 3 + 2}s linear forwards;
-        z-index: 0;
-    `;
-    
-    heartsBackground.appendChild(heart);
-    heart.addEventListener('animationend', () => {
-        heart.remove();
+function initIntroMask() {
+    if (!introMask) {
+        document.body.classList.remove('intro-pending');
+        document.body.classList.add('intro-ready');
+        return;
+    }
+
+    const reveal = () => {
+        if (introMask.classList.contains('opening')) return;
+        document.body.classList.remove('intro-pending');
+        document.body.classList.add('intro-ready');
+        introMask.classList.add('opening');
+        setTimeout(() => {
+            introMask.remove();
+        }, 1200);
+    };
+
+    introMask.addEventListener('click', reveal);
+    introMask.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') reveal();
     });
-    setTimeout(() => heart.remove(), 6500);
-}
-
-// 初始化飘落的爱心
-function initFloatingHearts() {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    setInterval(createFloatingHeart, 900);
 }
 
 // 音乐控制
@@ -74,17 +89,20 @@ async function playMusic() {
     try {
         await bgm.play();
         isMusicPlaying = true;
-        musicButton.textContent = '🎶';
+        musicButton.textContent = '❚❚';
+        musicPlayer.classList.add('playing');
     } catch (error) {
         isMusicPlaying = false;
-        musicButton.textContent = '🎵';
+        musicButton.textContent = '▶';
+        musicPlayer.classList.remove('playing');
     }
 }
 
 function pauseMusic() {
     bgm.pause();
     isMusicPlaying = false;
-    musicButton.textContent = '🎵';
+    musicButton.textContent = '▶';
+    musicPlayer.classList.remove('playing');
 }
 
 function toggleMusic() {
@@ -98,26 +116,78 @@ function toggleMusic() {
 // 事件监听
 refreshButton.addEventListener('click', showRandomMessage);
 musicButton.addEventListener('click', toggleMusic);
+musicToggle.addEventListener('click', () => {
+    musicPlayer.classList.toggle('expanded');
+});
+
+bgm.addEventListener('timeupdate', updateMusicProgress);
+bgm.addEventListener('loadedmetadata', updateMusicProgress);
+
+function updateMusicProgress() {
+    const duration = Number.isFinite(bgm.duration) ? bgm.duration : 0;
+    const current = Number.isFinite(bgm.currentTime) ? bgm.currentTime : 0;
+    const percent = duration ? Math.min(100, (current / duration) * 100) : 0;
+    musicProgressBar.style.width = `${percent}%`;
+    musicTime.textContent = formatTime(current);
+}
+
+function formatTime(seconds) {
+    const safeSeconds = Math.max(0, Math.floor(seconds || 0));
+    const mins = Math.floor(safeSeconds / 60);
+    const secs = String(safeSeconds % 60).padStart(2, '0');
+    return `${mins}:${secs}`;
+}
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
-    showRandomMessage();
-    initFloatingHearts();
+    initFloatingParticles();
+    initIntroMask();
+    initMessageObserver();
     // 不自动播放，等用户关闭弹窗后再播
 });
 
 // 添加打字机效果
-function typeWriter(element, text, speed = 100) {
+function typeWriter(element, text, speed = 80) {
+    clearTimeout(typeTimer);
     let i = 0;
     element.textContent = '';
+    element.classList.add('typing');
     function type() {
         if (i < text.length) {
             element.textContent += text.charAt(i);
             i++;
-            setTimeout(type, speed);
+            typeTimer = setTimeout(type, speed);
+        } else {
+            element.classList.remove('typing');
         }
     }
     type();
+}
+
+function initMessageObserver() {
+    const loveMessage = document.querySelector('.love-message');
+    if (!loveMessage) return;
+
+    if (!('IntersectionObserver' in window)) {
+        showRandomMessage();
+        hasTypedInitialMessage = true;
+        return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const envelopeClosed = getComputedStyle(envelopeScreen).display === 'none';
+            const modalClosed = birthdayModal.classList.contains('hidden');
+            const quizDone = !quizResult.classList.contains('hidden');
+            if (entry.isIntersecting && envelopeClosed && modalClosed && quizDone && !hasTypedInitialMessage) {
+                hasTypedInitialMessage = true;
+                showRandomMessage();
+                observer.disconnect();
+            }
+        });
+    }, { threshold: 0.45 });
+
+    observer.observe(loveMessage);
 }
 
 // 分享功能
@@ -269,22 +339,22 @@ window.addEventListener('resize', () => {
 
 // 信封开屏逻辑
 const envelopeScreen = document.getElementById('envelope-screen');
-const envelopeSvg = document.querySelector('.envelope-svg');
+const cssEnvelope = document.querySelector('.css-envelope');
 const envelopeFloat = document.querySelector('.envelope-float');
 const birthdayModal = document.getElementById('birthday-modal');
 const modalStartBtn = document.getElementById('modal-start-btn');
 
 let envelopeStarted = false;
 
-envelopeFloat.addEventListener('click', () => {
+function openEnvelope() {
     if (envelopeStarted) return;
     envelopeStarted = true;
 
     envelopeScreen.classList.add('reading');
-    envelopeSvg.classList.add('opening');
+    cssEnvelope.classList.add('opening');
 
     setTimeout(() => {
-        envelopeSvg.classList.add('extracting');
+        cssEnvelope.classList.add('extracting');
     }, 900);
 
     setTimeout(() => {
@@ -299,6 +369,14 @@ envelopeFloat.addEventListener('click', () => {
             birthdayModal.classList.remove('hidden');
         }, 400);
     }, 3600);
+}
+
+envelopeFloat.addEventListener('click', openEnvelope);
+cssEnvelope.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openEnvelope();
+    }
 });
 
 // 问答系统
@@ -374,4 +452,10 @@ modalStartBtn.addEventListener('click', () => {
 
 quizContinueBtn.addEventListener('click', () => {
     document.querySelector('.love-message').scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => {
+        if (!hasTypedInitialMessage) {
+            hasTypedInitialMessage = true;
+            showRandomMessage();
+        }
+    }, 520);
 });
