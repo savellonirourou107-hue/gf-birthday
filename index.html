@@ -75,11 +75,23 @@
                             <stop offset="0%" stop-color="#fffef9" />
                             <stop offset="100%" stop-color="#f5e8d6" />
                         </linearGradient>
+                        <radialGradient id="glow-grad" cx="50%" cy="48%" r="55%">
+                            <stop offset="0%" stop-color="rgba(255,218,174,0.55)" />
+                            <stop offset="60%" stop-color="rgba(255,218,174,0.22)" />
+                            <stop offset="100%" stop-color="rgba(255,218,174,0)" />
+                        </radialGradient>
                     </defs>
 
                     <!-- 信封背板 -->
                     <g filter="url(#envelope-shadow)">
                         <rect class="env-back" x="20" y="60" width="360" height="230" rx="12" fill="url(#paper-grad)" filter="url(#paper-texture)" />
+                    </g>
+                    <!-- 开封后的柔光，放在纸层后面 -->
+                    <ellipse class="env-glow" cx="200" cy="150" rx="132" ry="82" fill="url(#glow-grad)" opacity="0" />
+                    <!-- 打开后留在信纸背后的翻盖 -->
+                    <g class="env-open-flap-group">
+                        <path d="M20,62 L200,-44 L380,62 L358,78 L200,10 L42,78 Z" fill="url(#flap-grad)" />
+                        <path d="M42,78 L200,10 L358,78" fill="none" stroke="rgba(126,82,62,0.14)" stroke-width="1" />
                     </g>
                     <!-- 背板内框装饰 -->
                     <rect class="env-border" x="42" y="90" width="316" height="178" rx="4" fill="none" stroke="rgba(139,107,94,0.25)" stroke-width="1" stroke-dasharray="0" />
@@ -106,6 +118,8 @@
 
                     <!-- 口袋 V 形暗边 -->
                     <path class="env-pocket-rim" d="M20,160 L200,280 L380,160" fill="none" stroke="rgba(120,80,60,0.2)" stroke-width="1.5" />
+                    <path class="env-pocket-highlight" d="M34,170 L200,278 L366,170" fill="none" stroke="rgba(255,248,238,0.28)" stroke-width="1" />
+                    <path class="env-side-crease" d="M55,96 L200,280 M345,96 L200,280" fill="none" stroke="rgba(104,68,52,0.09)" stroke-width="1" />
 
                     <!-- 翻盖打开后的阴影 -->
                     <ellipse class="env-lip-shadow" cx="200" cy="160" rx="140" ry="15" fill="rgba(40,15,8,0.3)" filter="url(#letter-shadow)" opacity="0" />
@@ -127,9 +141,6 @@
 
                     <!-- 收件人 -->
                     <text class="env-to-text" x="200" y="242" text-anchor="middle" fill="rgba(112,75,64,0.9)" font-size="16" font-family="Georgia, 'ZCOOL XiaoWei', serif" letter-spacing="6">小团 亲启</text>
-
-                    <!-- 光芒 -->
-                    <ellipse class="env-glow" cx="200" cy="130" rx="120" ry="70" fill="rgba(255,210,160,0)" />
                 </svg>
             </div>
             <p class="envelope-hint">点 击 打 开 信 件</p>

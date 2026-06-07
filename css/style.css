@@ -585,16 +585,35 @@ body {
     width: 340px;
     height: auto;
     max-width: 90vw;
+    overflow: visible;
+    filter: drop-shadow(0 18px 34px rgba(10, 4, 4, 0.24));
 }
 
 /* 翻盖 - 打开动画 */
 .env-flap-group {
     transform-origin: 200px 0;
-    transition: transform 1s cubic-bezier(0.18, 0.82, 0.24, 1);
+    transition:
+        transform 0.9s cubic-bezier(0.18, 0.82, 0.24, 1),
+        opacity 0.55s ease;
 }
 
 .envelope-svg.opening .env-flap-group {
-    transform: rotateX(168deg);
+    opacity: 0;
+    transform: translateY(-18px) scaleY(0.08);
+}
+
+.env-open-flap-group {
+    opacity: 0;
+    transform: translateY(18px) scaleY(0.82);
+    transform-origin: 200px 62px;
+    transition:
+        opacity 0.8s ease 0.16s,
+        transform 0.9s cubic-bezier(0.18, 0.82, 0.24, 1) 0.16s;
+}
+
+.envelope-svg.opening .env-open-flap-group {
+    opacity: 0.96;
+    transform: translateY(0) scaleY(1);
 }
 
 /* 蜡封 - 打开时缩放消失 */
@@ -614,11 +633,13 @@ body {
 
 /* 信纸 - 抽出动画 */
 .env-letter-group {
-    transition: transform 1.35s cubic-bezier(0.18, 0.84, 0.24, 1);
+    transition:
+        transform 1.35s cubic-bezier(0.18, 0.84, 0.24, 1),
+        opacity 0.75s ease;
 }
 
 .envelope-svg.extracting .env-letter-group {
-    transform: translateY(-90px);
+    transform: translateY(-96px) rotate(-0.35deg);
 }
 
 /* 信纸文字 */
@@ -633,21 +654,23 @@ body {
 
 /* 光芒 */
 .env-glow {
-    transition: fill 0.8s ease;
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    pointer-events: none;
 }
 
 .envelope-svg.opening .env-glow {
-    fill: rgba(255, 210, 160, 0.6);
+    opacity: 0.62;
     animation: glowPulse 1.5s ease-in-out infinite;
 }
 
 .envelope-svg.extracting .env-glow {
-    fill: rgba(255, 210, 160, 0.45);
+    opacity: 0.48;
+    transform: translateY(-16px) scale(1.05);
 }
 
 @keyframes glowPulse {
-    0%, 100% { opacity: 0.5; }
-    50% { opacity: 1; }
+    0%, 100% { opacity: 0.42; }
+    50% { opacity: 0.68; }
 }
 
 /* 收件人文字 */
@@ -710,12 +733,16 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.7);
+    background:
+        radial-gradient(circle at 50% 42%, rgba(255, 210, 205, 0.18), transparent 34%),
+        rgba(38, 20, 20, 0.68);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 2000;
     animation: fadeInBg 0.5s ease;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
 }
 
 @keyframes fadeInBg {
@@ -724,13 +751,17 @@ body {
 }
 
 .modal-content {
-    background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
-    border-radius: 24px;
+    background:
+        linear-gradient(145deg, rgba(255, 250, 246, 0.94) 0%, rgba(255, 219, 218, 0.94) 58%, rgba(255, 196, 203, 0.92) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.58);
+    border-radius: 22px;
     padding: 2.5rem 2rem;
     text-align: center;
     max-width: 90%;
     width: 380px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    box-shadow:
+        0 24px 70px rgba(52, 18, 18, 0.36),
+        inset 0 1px 0 rgba(255, 255, 255, 0.74);
     animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     transform: scale(0.5);
 }
@@ -740,14 +771,19 @@ body {
 }
 
 .modal-cake {
-    font-size: 4rem;
+    font-size: 3.8rem;
     margin-bottom: 0.5rem;
-    animation: bounce 0.6s infinite alternate;
+    animation: cakeFloat 1.8s ease-in-out infinite;
+}
+
+@keyframes cakeFloat {
+    0%, 100% { transform: translateY(0) rotate(-1deg); }
+    50% { transform: translateY(-6px) rotate(1deg); }
 }
 
 @keyframes bounce {
     from { transform: translateY(0); }
-    to { transform: translateY(-10px); }
+    to { transform: translateY(-6px); }
 }
 
 .modal-title {
@@ -759,20 +795,20 @@ body {
 }
 
 .modal-subtitle {
-    color: #4a3333;
+    color: #6e4646;
     font-size: 1rem;
     margin-bottom: 0.5rem;
     line-height: 1.6;
 }
 
 .modal-hint {
-    color: #6b5555;
+    color: #8a6363;
     font-size: 0.9rem;
     margin-bottom: 1.5rem;
 }
 
 .modal-start-btn {
-    background: #ff4b6e;
+    background: linear-gradient(135deg, #ff4c72 0%, #e7355b 100%);
     color: #fff;
     border: none;
     border-radius: 50px;
@@ -781,13 +817,17 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     font-family: var(--font-main);
-    box-shadow: 0 5px 20px rgba(255, 75, 110, 0.4);
+    box-shadow:
+        0 12px 26px rgba(231, 53, 91, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .modal-start-btn:hover {
-    background: #ff1f4c;
+    background: linear-gradient(135deg, #ff3d67 0%, #d92e51 100%);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(255, 75, 110, 0.5);
+    box-shadow:
+        0 14px 30px rgba(231, 53, 91, 0.34),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .birthday-modal.hidden {
