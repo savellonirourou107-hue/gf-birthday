@@ -126,8 +126,8 @@ shareButton.addEventListener('click', async () => {
     try {
         if (navigator.share) {
             await navigator.share({
-                title: '💝 小团，生日快乐！',
-                text: '一封给小团的生日告白，快来看看吧！',
+                title: '小团，生日快乐',
+                text: '一封给小团的生日信',
                 url: window.location.href
             });
         } else {
@@ -316,11 +316,11 @@ const quizData = [
     },
     {
         question: 'Q2：新的一岁，阳希望小团怎样？',
-        options: ['A. 开心更多一点', 'B. 烦恼少一点', 'C. 被好好爱着 ✨']
+        options: ['A. 开心更多一点', 'B. 烦恼少一点', 'C. 天天开心 ✨']
     },
     {
         question: 'Q3：这封信里藏着什么？',
-        options: ['A. 生日祝福', 'B. 很多想念', 'C. 阳所有认真的喜欢 💕']
+        options: ['A. 生日祝福', 'B. 很多想念', 'C. 想对你说的所有话']
     }
 ];
 
