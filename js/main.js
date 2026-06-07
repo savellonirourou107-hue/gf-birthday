@@ -274,18 +274,28 @@ const envelopeFloat = document.querySelector('.envelope-float');
 const birthdayModal = document.getElementById('birthday-modal');
 const modalStartBtn = document.getElementById('modal-start-btn');
 
+let envelopeStarted = false;
+
 envelopeFloat.addEventListener('click', () => {
-    // 第1步：信封封口翻开
-    envelope.classList.add('open');
-    // 第2步：光芒亮起 + 信封放大消失 + 背景渐变
+    if (envelopeStarted) return;
+    envelopeStarted = true;
+
+    envelopeScreen.classList.add('reading');
+    envelope.classList.add('opening');
+
     setTimeout(() => {
+        envelope.classList.add('extracting');
+    }, 900);
+
+    setTimeout(() => {
+        envelope.classList.add('departing');
         envelopeScreen.classList.add('opened', 'transition-bg');
-        // 第3步：动画结束后显示弹窗
-        setTimeout(() => {
-            envelopeScreen.style.display = 'none';
-            birthdayModal.classList.remove('hidden');
-        }, 1200);
-    }, 1200);
+    }, 2600);
+
+    setTimeout(() => {
+        envelopeScreen.style.display = 'none';
+        birthdayModal.classList.remove('hidden');
+    }, 3850);
 });
 
 // 问答系统
