@@ -197,7 +197,7 @@ shareButton.addEventListener('click', async () => {
         if (navigator.share) {
             await navigator.share({
                 title: '小团，生日快乐',
-                text: '一封给小团的生日信',
+                text: '小团的生日信，一起来看吧',
                 url: window.location.href
             });
         } else {
