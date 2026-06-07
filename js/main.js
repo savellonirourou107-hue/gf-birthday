@@ -45,17 +45,20 @@ function initFloatingParticles() {
     particlesLayer.innerHTML = '';
     for (let i = 0; i < particleCount; i++) {
         const particle = document.createElement('span');
+        const inner = document.createElement('span');
         const isHeart = Math.random() > 0.45;
         const size = Math.round(Math.random() * 12 + 8);
         particle.className = `particle ${isHeart ? 'heart' : 'petal'}`;
-        particle.textContent = isHeart ? '♥' : '';
-        particle.setAttribute('aria-hidden', 'true');
+        inner.className = 'particle-inner';
+        inner.textContent = isHeart ? '♥' : '';
+        inner.setAttribute('aria-hidden', 'true');
         particle.style.setProperty('--x', `${Math.random() * 100}vw`);
         particle.style.setProperty('--size', `${size}px`);
         particle.style.setProperty('--opacity', (Math.random() * 0.4 + 0.4).toFixed(2));
         particle.style.setProperty('--duration', `${(Math.random() * 12 + 14).toFixed(1)}s`);
         particle.style.setProperty('--sway-duration', `${(Math.random() * 3 + 4).toFixed(1)}s`);
         particle.style.setProperty('--delay', `${(-Math.random() * 18).toFixed(1)}s`);
+        particle.appendChild(inner);
         particlesLayer.appendChild(particle);
     }
 }
@@ -142,7 +145,6 @@ function formatTime(seconds) {
 document.addEventListener('DOMContentLoaded', () => {
     initFloatingParticles();
     initIntroMask();
-    initMessageObserver();
     // 不自动播放，等用户关闭弹窗后再播
 });
 
@@ -459,3 +461,6 @@ quizContinueBtn.addEventListener('click', () => {
         }
     }, 520);
 });
+
+// 所有 DOM 引用就绪后再启动情话监听
+initMessageObserver();

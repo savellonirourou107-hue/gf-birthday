@@ -116,19 +116,29 @@ body.intro-ready .music-control {
     position: absolute;
     top: -24px;
     left: var(--x);
+    animation: particleFall var(--duration) linear var(--delay) infinite;
+    will-change: top;
+    pointer-events: none;
+}
+
+/* 内层：摇摆 + 旋转，GPU 合成 */
+.particle-inner {
     width: var(--size);
     height: var(--size);
     opacity: var(--opacity);
-    color: var(--petal-pink);
     font-size: var(--size);
     line-height: 1;
-    animation:
-        particleFall var(--duration) linear var(--delay) infinite,
-        particleSway var(--sway-duration) ease-in-out var(--delay) infinite alternate;
+    color: var(--petal-pink);
+    animation: particleSway var(--sway-duration) ease-in-out var(--delay) infinite alternate;
     will-change: transform;
+    transform: translateZ(0);
 }
 
-.particle.petal::before {
+.particle.heart .particle-inner {
+    transform: translateZ(0) scale(0.9);
+}
+
+.particle.petal .particle-inner::before {
     content: '';
     display: block;
     width: 100%;
@@ -145,8 +155,8 @@ body.intro-ready .music-control {
 }
 
 @keyframes particleSway {
-    from { margin-left: -18px; transform: rotate(-10deg); }
-    to { margin-left: 18px; transform: rotate(14deg); }
+    from { transform: translateX(-18px) rotate(-10deg) translateZ(0); }
+    to { transform: translateX(18px) rotate(14deg) translateZ(0); }
 }
 
 /* 主容器样式 */
