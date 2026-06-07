@@ -1,30 +1,20 @@
 // 情话数组
 const loveMessages = [
-    "小团，你的微笑是我每天的动力源",
-    "遇见你是我最美丽的意外，小团",
-    "你是我漫漫人生旅途中最美的风景",
-    "我的眼里只有你，就像星星只有天空",
+    "小团，生日快乐，愿今天所有温柔都偏向你",
+    "你出现以后，很多普通日子都变成了纪念日",
+    "愿你新的一岁，有花可看，有梦可追，也有我陪你",
+    "我想把所有慢慢变好的日子，都留给我们一起经历",
     "既见君子，云胡不喜",
-    "喜欢你是我做过最好的决定",
-    "愿我们执手相看，两不相厌",
     "小团，你的名字是我见过最短的情诗",
-    "你的出现让我的世界充满色彩",
-    "想和你一起慢慢变老，看遍世间美好",
-    "你是我最美的相遇，最甜的心动",
     "愿有岁月可回首，且以深情共白头",
-    "小团，你是我平凡生活里的所有惊喜",
-    "我爱你，如同飞鸟爱上了蓝天",
+    "你是我平凡生活里，最不平凡的惊喜",
     "愿我如星君如月，夜夜流光相皎洁",
-    "遇见你是我生命中最大的幸运",
-    "你是我最想要的未来和最美的现在",
-    "愿我们的爱情，如同星辰般永恒",
-    "小团，你是我心中最柔软的部分",
-    "想和你一起，走过春夏秋冬",
-    "你是我最想珍惜的人，最想守护的人",
-    "愿我们的爱情，永远保持最初的悸动",
-    "你的存在，让我的生命有了意义",
-    "想和你一起，看遍世间美好",
-    "小团，你是我最美的梦，最甜的心动"
+    "今天你负责开心，其他的愿望交给阳来努力",
+    "想和你一起，把春夏秋冬都过成喜欢的样子",
+    "你不需要闪闪发光，因为我已经觉得你很亮了",
+    "愿你永远被认真珍惜，也永远被我偏爱",
+    "这封生日信很短，但喜欢你这件事会很长",
+    "小团，新的一岁也要相信，阳会一直站在你这边"
 ];
 
 // DOM 元素
@@ -33,6 +23,7 @@ const refreshButton = document.getElementById('refresh-btn');
 const musicButton = document.getElementById('music-btn');
 const bgm = document.getElementById('bgm');
 const heartsBackground = document.querySelector('.hearts-bg');
+const maxFloatingHearts = 18;
 
 // 显示随机情话的函数
 function showRandomMessage() {
@@ -49,8 +40,11 @@ function showRandomMessage() {
 
 // 创建飘落的爱心
 function createFloatingHeart() {
-    const heart = document.createElement('div');
-    heart.innerHTML = '❤';
+    if (heartsBackground.children.length >= maxFloatingHearts) return;
+
+    const heart = document.createElement('span');
+    heart.textContent = '❤';
+    heart.setAttribute('aria-hidden', 'true');
     heart.style.cssText = `
         position: fixed;
         font-size: ${Math.random() * 20 + 10}px;
@@ -65,24 +59,40 @@ function createFloatingHeart() {
     heart.addEventListener('animationend', () => {
         heart.remove();
     });
+    setTimeout(() => heart.remove(), 6500);
 }
 
 // 初始化飘落的爱心
 function initFloatingHearts() {
-    setInterval(createFloatingHeart, 300);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    setInterval(createFloatingHeart, 900);
 }
 
 // 音乐控制
 let isMusicPlaying = false;
+async function playMusic() {
+    try {
+        await bgm.play();
+        isMusicPlaying = true;
+        musicButton.textContent = '🎶';
+    } catch (error) {
+        isMusicPlaying = false;
+        musicButton.textContent = '🎵';
+    }
+}
+
+function pauseMusic() {
+    bgm.pause();
+    isMusicPlaying = false;
+    musicButton.textContent = '🎵';
+}
+
 function toggleMusic() {
     if (isMusicPlaying) {
-        bgm.pause();
-        musicButton.textContent = '🎵';
+        pauseMusic();
     } else {
-        bgm.play();
-        musicButton.textContent = '🎶';
+        playMusic();
     }
-    isMusicPlaying = !isMusicPlaying;
 }
 
 // 事件监听
@@ -142,16 +152,31 @@ const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-btn');
 
 // 存储留言的数组
-let messages = JSON.parse(localStorage.getItem('love_messages') || '[]');
+let messages = [];
+try {
+    messages = JSON.parse(localStorage.getItem('love_messages') || '[]');
+} catch (error) {
+    messages = [];
+    localStorage.removeItem('love_messages');
+}
 
 // 显示留言
 function displayMessages() {
     messageList.innerHTML = messages.map(msg => `
         <div class="message-item">
-            <div class="message-name">${msg.name}</div>
-            <div class="message-content">${msg.content}</div>
+            <div class="message-name">${escapeHtml(msg.name)}</div>
+            <div class="message-content">${escapeHtml(msg.content)}</div>
         </div>
     `).join('');
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 // 添加新留言
@@ -273,16 +298,16 @@ const quizDots = document.querySelectorAll('.quiz-dot');
 
 const quizData = [
     {
-        question: 'Q1：小团觉得阳怎么样？',
-        options: ['A. 很帅', 'B. 超级帅', 'C. 每天都更帅 😎']
+        question: 'Q1：今天的小团应该收到什么？',
+        options: ['A. 蛋糕和鲜花', 'B. 拥抱和偏爱', 'C. 以上全部都要 🎂']
     },
     {
-        question: 'Q2：阳最喜欢小团的什么？',
-        options: ['A. 笑起来的样子', 'B. 每一个样子', 'C. 包括但不限于以上所有 ✨']
+        question: 'Q2：新的一岁，阳希望小团怎样？',
+        options: ['A. 开心更多一点', 'B. 烦恼少一点', 'C. 被好好爱着 ✨']
     },
     {
-        question: 'Q3：阳现在最想做什么？',
-        options: ['A. 抱抱小团', 'B. 亲亲小团', 'C. 当然是全部都要 💕']
+        question: 'Q3：这封信里藏着什么？',
+        options: ['A. 生日祝福', 'B. 很多想念', 'C. 阳所有认真的喜欢 💕']
     }
 ];
 
@@ -331,31 +356,9 @@ function startQuiz() {
 modalStartBtn.addEventListener('click', () => {
     birthdayModal.classList.add('hidden');
     setTimeout(startQuiz, 300);
-    bgm.play().catch(() => {});
-    isMusicPlaying = true;
-    musicButton.textContent = '🎶';
+    playMusic();
 });
 
 quizContinueBtn.addEventListener('click', () => {
     document.querySelector('.love-message').scrollIntoView({ behavior: 'smooth' });
 });
-
-// 微信浏览器音乐自动播放兼容
-function autoPlayMusic() {
-    bgm.play().then(() => {
-        isMusicPlaying = true;
-        musicButton.textContent = '🎶';
-    }).catch(() => {});
-}
-
-if (typeof WeixinJSBridge !== 'undefined') {
-    WeixinJSBridge.invoke('getNetworkType', {}, () => {
-        autoPlayMusic();
-    });
-} else {
-    document.addEventListener('WeixinJSBridgeReady', () => {
-        WeixinJSBridge.invoke('getNetworkType', {}, () => {
-            autoPlayMusic();
-        });
-    }, false);
-} 
