@@ -1487,7 +1487,7 @@ body.intro-ready .music-control {
     padding: 2.5rem 2rem;
     border-radius: 6px;
     background:
-        repeating-linear-gradient(180deg, transparent 0 29px, rgba(176, 140, 120, 0.12) 30px 31px),
+        repeating-linear-gradient(180deg, transparent 0 29px, rgba(176, 140, 120, 0.14) 30px 31px),
         linear-gradient(180deg, #faf5ed 0%, #f3e8da 100%);
     box-shadow:
         0 0 60px rgba(255, 160, 180, 0.18),
@@ -1497,7 +1497,7 @@ body.intro-ready .music-control {
     text-align: left;
     font-family: var(--font-hand);
     color: #4a3028;
-    line-height: 2;
+    line-height: 30px;
 }
 
 .letter-paper::before {
@@ -1514,16 +1514,16 @@ body.intro-ready .music-control {
 
 .letter-dear {
     font-size: 1.25rem;
+    line-height: 30px;
     color: #8c3650;
-    padding-bottom: 0.3rem;
     border-bottom: 1px dashed rgba(140, 54, 80, 0.22);
-    margin-bottom: 1.2rem;
+    margin-bottom: 29px;
 }
 
 .letter-body {
     font-size: 1.1rem;
-    line-height: 2;
-    min-height: 18em;
+    line-height: 30px;
+    min-height: 16em;
     white-space: pre-wrap;
 }
 
