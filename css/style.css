@@ -1372,6 +1372,120 @@ body.intro-ready .music-control {
     margin-bottom: 1.5rem !important;
 }
 
+/* 长信样式 */
+.long-letter-section {
+    margin: 2.5rem 0;
+}
+
+.long-letter-section.hidden {
+    display: none;
+}
+
+.letter-paper {
+    position: relative;
+    max-width: 580px;
+    margin: 0 auto;
+    padding: 2.5rem 2rem;
+    border-radius: 6px;
+    background:
+        repeating-linear-gradient(180deg, transparent 0 29px, rgba(176, 140, 120, 0.12) 30px 31px),
+        linear-gradient(180deg, #faf5ed 0%, #f3e8da 100%);
+    box-shadow:
+        0 12px 28px rgba(72, 33, 23, 0.22),
+        0 3px 8px rgba(72, 33, 23, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    text-align: left;
+    font-family: var(--font-hand);
+    color: #4a3028;
+    line-height: 2;
+}
+
+.letter-paper::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    background: linear-gradient(180deg, rgba(200, 170, 140, 0.18), transparent);
+    border-radius: 6px 6px 0 0;
+    pointer-events: none;
+}
+
+.letter-dear {
+    font-size: 1.25rem;
+    color: #8c3650;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px dashed rgba(140, 54, 80, 0.22);
+    margin-bottom: 1.2rem;
+}
+
+.letter-body {
+    font-size: 1.1rem;
+    line-height: 2;
+    min-height: 2em;
+    white-space: pre-wrap;
+}
+
+.letter-body.typing::after {
+    content: '|';
+    display: inline;
+    animation: caretBlink 0.9s steps(1) infinite;
+    color: #8c3650;
+}
+
+.letter-sign {
+    margin-top: 2rem;
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4rem;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.letter-sign.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.letter-sign-name {
+    font-size: 1.3rem;
+    color: #8c3650;
+}
+
+.letter-sign-date {
+    font-size: 0.85rem;
+    color: #9c7b6b;
+    font-family: var(--font-main);
+}
+
+/* 情话和相册延迟浮现 */
+.love-message.delayed-reveal,
+.album-section.delayed-reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.8s ease 0.3s, transform 0.8s ease 0.3s;
+}
+
+.love-message.delayed-reveal.visible,
+.album-section.delayed-reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+    .letter-paper {
+        padding: 1.8rem 1.2rem;
+    }
+
+    .letter-body {
+        font-size: 1rem;
+    }
+}
+
 @media (max-width: 768px) {
     .envelope {
         width: 280px;

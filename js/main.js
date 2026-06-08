@@ -452,14 +452,89 @@ modalStartBtn.addEventListener('click', () => {
     playMusic();
 });
 
-quizContinueBtn.addEventListener('click', () => {
-    document.querySelector('.love-message').scrollIntoView({ behavior: 'smooth' });
+// 长信内容
+const letterText = `今天是一个很特别的日子。
+
+我想了很久，该写些什么给你。
+
+你知道吗，你出现以后，很多普通的日子都变成了纪念日。你的名字像是一句很短的咒语，每次念到，就会让我笑出来。
+
+我其实不太会说浪漫的话，但你让我想成为一个更好的人。不是那种了不起的更好，是每天早上醒来，想到你的那种更好。
+
+小团，生日快乐。
+
+愿新的一岁。愿年年岁岁。
+
+你许的愿望，交给阳来努力实现。`;
+
+const longLetter = document.getElementById('long-letter');
+const letterBody = document.getElementById('letter-body');
+const letterSign = document.getElementById('letter-sign');
+const letterSignDate = document.querySelector('.letter-sign-date');
+let letterTyped = false;
+
+function typeLetter(text, element, speed = 70) {
+    return new Promise(resolve => {
+        element.classList.add('typing');
+        let i = 0;
+        const timer = setInterval(() => {
+            if (i < text.length) {
+                element.textContent += text.charAt(i);
+                i++;
+            } else {
+                clearInterval(timer);
+                element.classList.remove('typing');
+                resolve();
+            }
+        }, speed);
+    });
+}
+
+async function showLongLetter() {
+    longLetter.classList.remove('hidden');
+    letterBody.textContent = '';
+    letterSign.classList.add('hidden');
+
+    // 滚动到长信
+    longLetter.scrollIntoView({ behavior: 'smooth' });
+
+    // 逐字打印
+    await typeLetter(letterText, letterBody, 65);
+
+    // 打印完毕，显示签名和日期
+    const today = new Date();
+    letterSignDate.textContent = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
+    letterSign.classList.add('visible');
+    letterTyped = true;
+
+    // 再滚动一下确保签名可见
+    letterSign.scrollIntoView({ behavior: 'smooth' });
+}
+
+quizContinueBtn.addEventListener('click', async () => {
+    if (letterTyped) return; // 长信只打一次
+    await showLongLetter();
+
+    // 长信打完后，延迟显示情话和相册
     setTimeout(() => {
-        if (!hasTypedInitialMessage) {
-            hasTypedInitialMessage = true;
-            showRandomMessage();
-        }
-    }, 520);
+        document.querySelector('.love-message').classList.add('delayed-reveal');
+        document.querySelector('.album-section').classList.add('delayed-reveal');
+
+        // 触发情话区域可见
+        requestAnimationFrame(() => {
+            document.querySelector('.love-message').classList.add('visible');
+            document.querySelector('.album-section').classList.add('visible');
+        });
+
+        // 滚动到情话区域
+        setTimeout(() => {
+            document.querySelector('.love-message').scrollIntoView({ behavior: 'smooth' });
+            if (!hasTypedInitialMessage) {
+                hasTypedInitialMessage = true;
+                showRandomMessage();
+            }
+        }, 400);
+    }, 800);
 });
 
 // 所有 DOM 引用就绪后再启动情话监听
