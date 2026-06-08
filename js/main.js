@@ -391,16 +391,24 @@ const quizDots = document.querySelectorAll('.quiz-dot');
 
 const quizData = [
     {
-        question: 'Q1：今天的小团应该收到什么？',
-        options: ['A. 蛋糕和鲜花', 'B. 拥抱和偏爱', 'C. 以上全部都要 🎂']
+        question: 'Q1：小团最喜欢的人是谁？',
+        options: ['A. 一个叫阳的笨蛋', 'B. 上面那个名字', 'C. 当然是阳啦 💕']
     },
     {
-        question: 'Q2：新的一岁，阳希望小团怎样？',
-        options: ['A. 开心更多一点', 'B. 烦恼少一点', 'C. 天天开心 ✨']
+        question: 'Q2：今天是什么特别的日子？',
+        options: ['A. 普通的一天', 'B. 有点特别的一天', 'C. 小团的生日呀 🎂']
     },
     {
-        question: 'Q3：这封信里藏着什么？',
-        options: ['A. 生日祝福', 'B. 很多想念', 'C. 想对你说的所有话']
+        question: 'Q3：新的一岁，阳希望小团怎样？',
+        options: ['A. 开心更多一点', 'B. 烦恼少一点', 'C. 天天都开心 ✨']
+    },
+    {
+        question: 'Q4：阳最喜欢小团什么？',
+        options: ['A. 笑起来的样子', 'B. 每一个样子', 'C. 全部，包括没列出来的 🌸']
+    },
+    {
+        question: 'Q5：这封信里藏着什么？',
+        options: ['A. 生日祝福', 'B. 很多想念', 'C. 想对你说的所有话 💝']
     }
 ];
 
@@ -439,11 +447,30 @@ function showQuizResult() {
     quizDots.forEach(d => { d.className = 'quiz-dot done'; });
 }
 
+function initQuizParticles() {
+    const layer = document.getElementById('quiz-particles');
+    if (!layer) return;
+    layer.innerHTML = '';
+    const symbols = ['❤️', '🌹', '💕', '🥀', '💗', '🌸', '💖', '🌷'];
+    for (let i = 0; i < 36; i++) {
+        const p = document.createElement('span');
+        p.className = 'quiz-particle';
+        p.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+        p.style.setProperty('--qp-size', `${Math.random() * 16 + 14}px`);
+        p.style.setProperty('--qp-duration', `${(Math.random() * 10 + 12).toFixed(1)}s`);
+        p.style.setProperty('--qp-delay', `${(-Math.random() * 16).toFixed(1)}s`);
+        p.style.setProperty('--qp-rotate', `${(Math.random() - 0.5) * 720}deg`);
+        p.style.setProperty('--qp-sway', `${(Math.random() - 0.5) * 120}px`);
+        p.style.left = `${Math.random() * 100}%`;
+        layer.appendChild(p);
+    }
+}
+
 function startQuiz() {
     quizSection.classList.remove('hidden');
+    initQuizParticles();
     currentQuestion = 0;
     showQuestion(0);
-    quizSection.scrollIntoView({ behavior: 'smooth' });
 }
 
 modalStartBtn.addEventListener('click', () => {
