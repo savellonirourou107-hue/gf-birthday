@@ -517,26 +517,29 @@ function typeLetter(text, element, speed = 70) {
     });
 }
 
-async function showLongLetter() {
+function showLongLetter() {
     if (!longLetter) return;
-
     letterBody.textContent = '';
     letterSign.classList.remove('visible');
     letterSign.classList.add('hidden');
 
-    // 先显示，触发进场动画
+    // 显现长信遮罩，背景变暗，信纸浮入
     longLetter.classList.remove('hidden');
     requestAnimationFrame(() => {
         longLetter.classList.add('reveal');
     });
+}
 
-    // 确保用户能看到长信
+quizContinueBtn.addEventListener('click', async () => {
+    if (letterTyped) return; // 长信只打一次
+
+    // 先启动长信淡入，再关闭问答，无缝衔接
+    showLongLetter();
     setTimeout(() => {
-        longLetter.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 150);
+        quizSection.classList.add('hidden');
+    }, 400);
 
-    // 等动画到位后开始打字
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 1100));
     await typeLetter(letterText, letterBody, 65);
 
     // 打印完毕，显示签名和日期
@@ -546,40 +549,35 @@ async function showLongLetter() {
     letterSign.classList.add('visible');
     letterTyped = true;
 
-    // 滚动到底部确保签名可见
+    // 显示"看完了"按钮
+    const letterDone = document.getElementById('letter-done');
+    letterDone.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        letterDone.classList.add('visible');
+    });
+});
+
+// "看完了" → 关闭长信，浮现情话和相册
+document.getElementById('letter-continue-btn').addEventListener('click', () => {
+    longLetter.classList.remove('reveal');
     setTimeout(() => {
-        letterSign.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 200);
-}
+        longLetter.classList.add('hidden');
+    }, 600);
 
-quizContinueBtn.addEventListener('click', async () => {
-    if (letterTyped) return; // 长信只打一次
+    document.querySelector('.love-message').classList.add('delayed-reveal');
+    document.querySelector('.album-section').classList.add('delayed-reveal');
+    requestAnimationFrame(() => {
+        document.querySelector('.love-message').classList.add('visible');
+        document.querySelector('.album-section').classList.add('visible');
+    });
 
-    // 关闭问答全屏遮罩
-    quizSection.classList.add('hidden');
-
-    await showLongLetter();
-
-    // 长信打完后，延迟显示情话和相册
     setTimeout(() => {
-        document.querySelector('.love-message').classList.add('delayed-reveal');
-        document.querySelector('.album-section').classList.add('delayed-reveal');
-
-        // 触发情话区域可见
-        requestAnimationFrame(() => {
-            document.querySelector('.love-message').classList.add('visible');
-            document.querySelector('.album-section').classList.add('visible');
-        });
-
-        // 滚动到情话区域
-        setTimeout(() => {
-            document.querySelector('.love-message').scrollIntoView({ behavior: 'smooth' });
-            if (!hasTypedInitialMessage) {
-                hasTypedInitialMessage = true;
-                showRandomMessage();
-            }
-        }, 400);
-    }, 800);
+        document.querySelector('.love-message').scrollIntoView({ behavior: 'smooth' });
+        if (!hasTypedInitialMessage) {
+            hasTypedInitialMessage = true;
+            showRandomMessage();
+        }
+    }, 500);
 });
 
 // 所有 DOM 引用就绪后再启动情话监听

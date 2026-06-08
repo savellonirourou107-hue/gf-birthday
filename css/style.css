@@ -1421,10 +1421,15 @@ body.intro-ready .music-control {
 
 /* 长信样式 */
 .long-letter-section {
-    margin: 2.5rem 0;
-    opacity: 0;
-    transform: translateY(30px);
-    transition: opacity 0.6s ease, transform 0.6s ease;
+    position: fixed;
+    inset: 0;
+    z-index: 1950;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0);
+    transition: background 0.8s ease;
+    pointer-events: none;
 }
 
 .long-letter-section.hidden {
@@ -1432,21 +1437,35 @@ body.intro-ready .music-control {
 }
 
 .long-letter-section.reveal {
+    background: rgba(20, 10, 15, 0.65);
+    pointer-events: auto;
+}
+
+.letter-paper-wrapper {
+    opacity: 0;
+    transform: translateY(40px) scale(0.96);
+    transition: opacity 0.7s ease 0.3s, transform 0.7s ease 0.3s;
+    max-width: 90%;
+    width: 580px;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.long-letter-section.reveal .letter-paper-wrapper {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
 }
 
 .letter-paper {
     position: relative;
-    max-width: 580px;
-    margin: 0 auto;
     padding: 2.5rem 2rem;
     border-radius: 6px;
     background:
         repeating-linear-gradient(180deg, transparent 0 29px, rgba(176, 140, 120, 0.12) 30px 31px),
         linear-gradient(180deg, #faf5ed 0%, #f3e8da 100%);
     box-shadow:
-        0 12px 28px rgba(72, 33, 23, 0.22),
+        0 0 60px rgba(255, 160, 180, 0.18),
+        0 20px 50px rgba(0, 0, 0, 0.35),
         0 3px 8px rgba(72, 33, 23, 0.1),
         inset 0 1px 0 rgba(255, 255, 255, 0.8);
     text-align: left;
@@ -1519,6 +1538,23 @@ body.intro-ready .music-control {
     font-size: 0.85rem;
     color: #9c7b6b;
     font-family: var(--font-main);
+}
+
+.letter-done-btn {
+    margin-top: 2rem;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.6s ease 0.4s, transform 0.6s ease 0.4s;
+}
+
+.letter-done-btn.hidden {
+    display: none;
+}
+
+.letter-done-btn.visible {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 /* 情话和相册延迟浮现 */
