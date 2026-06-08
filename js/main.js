@@ -339,6 +339,13 @@ window.addEventListener('resize', () => {
     }
 });
 
+function setOverlayActive(isActive) {
+    document.body.classList.toggle('overlay-active', isActive);
+    if (isActive && isMessageBoardOpen) {
+        toggleMessageBoard();
+    }
+}
+
 // 信封开屏逻辑
 const envelopeScreen = document.getElementById('envelope-screen');
 const cssEnvelope = document.querySelector('.css-envelope');
@@ -445,6 +452,7 @@ function showQuizResult() {
     quizOptions.style.display = 'none';
     quizResult.classList.remove('hidden');
     quizDots.forEach(d => { d.className = 'quiz-dot done'; });
+    quizSection.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function initQuizParticles() {
@@ -467,7 +475,12 @@ function initQuizParticles() {
 }
 
 function startQuiz() {
+    setOverlayActive(true);
     quizSection.classList.remove('hidden');
+    quizSection.scrollTo({ top: 0 });
+    quizQuestion.style.display = '';
+    quizOptions.style.display = '';
+    quizResult.classList.add('hidden');
     initQuizParticles();
     currentQuestion = 0;
     showQuestion(0);
@@ -538,6 +551,7 @@ function initLetterSakura() {
 
 function showLongLetter() {
     if (!longLetter) return;
+    setOverlayActive(true);
     letterBody.textContent = '';
     letterSign.classList.remove('visible');
     letterSign.classList.add('hidden');
@@ -551,6 +565,7 @@ function showLongLetter() {
 
     // 显现长信遮罩，背景变暗，信纸浮入
     longLetter.classList.remove('hidden');
+    longLetter.scrollTo({ top: 0 });
     requestAnimationFrame(() => {
         longLetter.classList.add('reveal');
     });
@@ -580,6 +595,9 @@ quizContinueBtn.addEventListener('click', async () => {
     letterDone.classList.remove('hidden');
     requestAnimationFrame(() => {
         letterDone.classList.add('visible');
+        setTimeout(() => {
+            letterDone.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }, 120);
     });
 });
 
@@ -588,6 +606,7 @@ document.getElementById('letter-continue-btn').addEventListener('click', () => {
     longLetter.classList.remove('reveal');
     setTimeout(() => {
         longLetter.classList.add('hidden');
+        setOverlayActive(false);
     }, 600);
 
     document.querySelector('.love-message').classList.add('delayed-reveal');

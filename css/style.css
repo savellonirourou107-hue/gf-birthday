@@ -41,6 +41,22 @@ body.intro-ready .music-control {
     transition: opacity 0.9s ease;
 }
 
+body.overlay-active {
+    overflow: hidden;
+}
+
+body.overlay-active .message-board-toggle,
+body.overlay-active .music-control {
+    opacity: 0;
+    pointer-events: none;
+}
+
+body.overlay-active .message-board {
+    right: -400px;
+    opacity: 0;
+    pointer-events: none;
+}
+
 /* 进入页面蒙版 */
 .intro-mask {
     position: fixed;
@@ -823,109 +839,6 @@ body.intro-ready .music-control {
     50% { transform: translateY(-8px); }
 }
 
-/* SVG 信封 */
-.envelope-svg {
-    width: 340px;
-    height: auto;
-    max-width: 90vw;
-    overflow: visible;
-    filter: drop-shadow(0 18px 34px rgba(10, 4, 4, 0.24));
-}
-
-/* 翻盖 - 打开动画 */
-.env-flap-group {
-    transform-origin: 200px 0;
-    transition:
-        transform 0.9s cubic-bezier(0.18, 0.82, 0.24, 1),
-        opacity 0.55s ease;
-}
-
-.envelope-svg.opening .env-flap-group {
-    opacity: 0;
-    transform: translateY(-18px) scaleY(0.08);
-}
-
-.env-open-flap-group {
-    opacity: 0;
-    transform: translateY(18px) scaleY(0.82);
-    transform-origin: 200px 62px;
-    transition:
-        opacity 0.8s ease 0.16s,
-        transform 0.9s cubic-bezier(0.18, 0.82, 0.24, 1) 0.16s;
-}
-
-.envelope-svg.opening .env-open-flap-group {
-    opacity: 0.96;
-    transform: translateY(0) scaleY(1);
-}
-
-/* 蜡封 - 打开时缩放消失 */
-.env-seal-group {
-    transition: transform 0.55s ease, opacity 0.55s ease;
-}
-
-.envelope-svg.opening .env-seal-group {
-    animation: sealBreak 0.7s ease forwards;
-}
-
-@keyframes sealBreak {
-    0% { transform: scale(1); opacity: 1; }
-    45% { transform: scale(0.9); opacity: 0.8; }
-    100% { transform: scale(0.5) translateY(10px); opacity: 0; }
-}
-
-/* 信纸 - 抽出动画 */
-.env-letter-group {
-    transition:
-        transform 1.35s cubic-bezier(0.18, 0.84, 0.24, 1),
-        opacity 0.75s ease;
-}
-
-.envelope-svg.extracting .env-letter-group {
-    transform: translateY(-96px) rotate(-0.35deg);
-}
-
-/* 信纸文字 */
-.letter-text {
-    opacity: 0;
-    transition: opacity 0.8s ease 0.55s;
-}
-
-.envelope-svg.extracting .letter-text {
-    opacity: 1;
-}
-
-/* 光芒 */
-.env-glow {
-    transition: opacity 0.8s ease, transform 0.8s ease;
-    pointer-events: none;
-}
-
-.envelope-svg.opening .env-glow {
-    opacity: 0.62;
-    animation: glowPulse 1.5s ease-in-out infinite;
-}
-
-.envelope-svg.extracting .env-glow {
-    opacity: 0.48;
-    transform: translateY(-16px) scale(1.05);
-}
-
-@keyframes glowPulse {
-    0%, 100% { opacity: 0.42; }
-    50% { opacity: 0.68; }
-}
-
-/* 收件人文字 */
-.env-to-text {
-    transition: opacity 0.45s ease, transform 0.45s ease;
-}
-
-.envelope-svg.extracting .env-to-text {
-    opacity: 0;
-    transform: translateY(8px);
-}
-
 /* CSS 信封 */
 .css-envelope {
     --env-w: min(86vw, 350px);
@@ -937,6 +850,20 @@ body.intro-ready .music-control {
     perspective: 900px;
     transform-style: preserve-3d;
     filter: drop-shadow(0 22px 34px rgba(12, 4, 5, 0.35));
+}
+
+.css-envelope::after {
+    content: '';
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    bottom: -16%;
+    height: 18%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(28, 7, 10, 0.34), transparent 70%);
+    transform: rotateX(66deg);
+    pointer-events: none;
+    z-index: -1;
 }
 
 .css-envelope-back,
@@ -952,8 +879,19 @@ body.intro-ready .music-control {
     border-radius: 8px;
     background:
         radial-gradient(circle at 18% 22%, rgba(132, 83, 65, 0.06) 0 1px, transparent 2px),
+        radial-gradient(circle at 72% 68%, rgba(132, 83, 65, 0.045) 0 1px, transparent 2px),
         linear-gradient(145deg, #fff4e8 0%, #ead0bc 100%);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.css-envelope-back::before {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(105, 58, 42, 0.14);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.22), transparent 42%);
+    pointer-events: none;
 }
 
 .css-letter {
@@ -965,6 +903,8 @@ body.intro-ready .music-control {
     padding: 1.3rem 1rem;
     border-radius: 7px;
     background:
+        radial-gradient(circle at 24% 18%, rgba(124, 81, 61, 0.045) 0 1px, transparent 2px),
+        radial-gradient(circle at 74% 62%, rgba(124, 81, 61, 0.04) 0 1px, transparent 2px),
         repeating-linear-gradient(180deg, transparent 0 22px, rgba(126, 80, 58, 0.12) 23px 24px),
         linear-gradient(180deg, #fff9f0 0%, #f5e6d6 100%);
     color: var(--ink-brown);
@@ -977,8 +917,21 @@ body.intro-ready .music-control {
     transition: transform 1.45s cubic-bezier(0.18, 0.84, 0.24, 1), box-shadow 1s ease;
 }
 
+.css-letter::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+        linear-gradient(90deg, rgba(112, 69, 47, 0.08), transparent 16%, transparent 84%, rgba(112, 69, 47, 0.05)),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.42), transparent 34%);
+    pointer-events: none;
+}
+
 .css-letter-title,
 .css-letter-sub {
+    position: relative;
+    z-index: 1;
     font-family: var(--font-hand);
     color: var(--ink-brown);
     line-height: 1.45;
@@ -993,6 +946,8 @@ body.intro-ready .music-control {
 .css-letter-sub {
     font-size: clamp(0.9rem, 3.5vw, 1.05rem);
     margin-top: 0.3rem;
+    max-width: 12em;
+    margin-inline: auto;
 }
 
 .css-envelope-flap {
@@ -1008,6 +963,16 @@ body.intro-ready .music-control {
         opacity 0.55s ease,
         filter 0.7s ease;
     backface-visibility: visible;
+}
+
+.css-envelope-flap::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(90deg, transparent 0 48%, rgba(106, 50, 64, 0.16) 50%, transparent 52%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.36), transparent 44%);
+    pointer-events: none;
 }
 
 .css-envelope-left,
@@ -1032,6 +997,15 @@ body.intro-ready .music-control {
         linear-gradient(180deg, rgba(255, 255, 255, 0.34), transparent 38%),
         linear-gradient(165deg, #fff0e1 0%, #e6bfa8 100%);
     box-shadow: inset 0 -8px 16px rgba(95, 50, 36, 0.08);
+}
+
+.css-envelope-pocket::before {
+    content: '';
+    position: absolute;
+    inset: 24% 0 0;
+    clip-path: polygon(0 0, 50% 58%, 100% 0);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.24), transparent 58%);
+    pointer-events: none;
 }
 
 .css-envelope-pocket::after {
@@ -1077,7 +1051,7 @@ body.intro-ready .music-control {
 .css-envelope.opening .css-envelope-flap {
     transform: rotateX(178deg);
     opacity: 0.72;
-    filter: brightness(0.96);
+    filter: brightness(0.96) drop-shadow(0 -10px 18px rgba(64, 18, 26, 0.18));
     z-index: 1;
 }
 
@@ -1087,9 +1061,9 @@ body.intro-ready .music-control {
 }
 
 .css-envelope.extracting .css-letter {
-    transform: translateY(-48%) rotate(-0.35deg);
+    transform: translateY(-51%) rotate(-0.35deg) translateZ(8px);
     box-shadow:
-        0 18px 30px rgba(72, 33, 23, 0.23),
+        0 24px 38px rgba(72, 33, 23, 0.26),
         inset 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
@@ -1254,11 +1228,17 @@ body.intro-ready .music-control {
     position: fixed;
     inset: 0;
     z-index: 2100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
     background: linear-gradient(160deg, #3d1020 0%, #6b1a2e 35%, #8c2640 65%, #4a1226 100%);
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    isolation: isolate;
 }
 
 .quiz-section.hidden {
@@ -1267,7 +1247,7 @@ body.intro-ready .music-control {
 
 /* 心玫瑰花雨粒子层 */
 .quiz-particles-layer {
-    position: absolute;
+    position: fixed;
     inset: 0;
     z-index: 0;
     pointer-events: none;
@@ -1308,8 +1288,12 @@ body.intro-ready .music-control {
     padding: 2rem 1.5rem;
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
-    max-width: 90%;
-    width: 420px;
+    max-width: 100%;
+    width: min(420px, 100%);
+    max-height: calc(100vh - 48px);
+    max-height: min(720px, calc(100dvh - 48px));
+    overflow-y: auto;
+    margin: auto;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
 }
 
@@ -1423,13 +1407,20 @@ body.intro-ready .music-control {
 .long-letter-section {
     position: fixed;
     inset: 0;
-    z-index: 1950;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    z-index: 2200;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: max(28px, env(safe-area-inset-top)) 16px max(34px, env(safe-area-inset-bottom));
     background: rgba(0, 0, 0, 0);
     transition: background 0.8s ease;
     pointer-events: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    isolation: isolate;
 }
 
 .long-letter-section.hidden {
@@ -1447,10 +1438,9 @@ body.intro-ready .music-control {
     opacity: 0;
     transform: translateY(40px) scale(0.96);
     transition: opacity 0.8s ease 0.3s, transform 0.8s ease 0.3s;
-    max-width: 90%;
-    width: 580px;
-    max-height: 85vh;
-    overflow-y: auto;
+    max-width: 100%;
+    width: min(580px, 100%);
+    margin: auto 0;
 }
 
 .long-letter-section.reveal .letter-paper-wrapper {
@@ -1498,6 +1488,7 @@ body.intro-ready .music-control {
     font-family: var(--font-hand);
     color: #4a3028;
     line-height: 30px;
+    overflow: hidden;
 }
 
 .letter-paper::before {
@@ -1588,6 +1579,11 @@ body.intro-ready .music-control {
     transform: translateY(0);
 }
 
+.letter-done-btn .modal-start-btn {
+    width: min(100%, 280px);
+    padding-inline: 1.4rem;
+}
+
 /* 情话和相册延迟浮现 */
 .love-message.delayed-reveal,
 .album-section.delayed-reveal {
@@ -1603,64 +1599,44 @@ body.intro-ready .music-control {
 }
 
 @media (max-width: 768px) {
+    body.overlay-active .message-board {
+        right: -100%;
+    }
+
+    .quiz-section {
+        padding: max(18px, env(safe-area-inset-top)) 14px max(22px, env(safe-area-inset-bottom));
+    }
+
+    .quiz-card {
+        padding: 1.55rem 1.05rem;
+        border-radius: 18px;
+    }
+
+    .quiz-progress {
+        gap: 0.75rem;
+        margin-bottom: 1.1rem;
+    }
+
+    .quiz-question {
+        font-size: 1.12rem;
+    }
+
+    .quiz-option {
+        padding: 0.9rem 0.85rem;
+        font-size: 1rem;
+        border-radius: 13px;
+    }
+
+    .long-letter-section {
+        padding: max(18px, env(safe-area-inset-top)) 12px max(26px, env(safe-area-inset-bottom));
+    }
+
     .letter-paper {
         padding: 1.8rem 1.2rem;
     }
 
     .letter-body {
         font-size: 1rem;
-    }
-}
-
-@media (max-width: 768px) {
-    .envelope {
-        width: 280px;
-        height: 220px;
-    }
-
-    .envelope-back,
-    .envelope-side,
-    .envelope-pocket {
-        height: 150px;
-    }
-
-    .envelope-letter {
-        left: 28px;
-        right: 28px;
-        bottom: 60px;
-        height: 132px;
-    }
-
-    .letter-lines {
-        font-size: 0.9rem;
-        gap: 0.65rem;
-    }
-
-    .letter-lines span:first-child {
-        font-size: 1.05rem;
-    }
-
-    .envelope-flap {
-        height: 140px;
-    }
-
-    .envelope.extracting .envelope-letter {
-        transform: translateY(-70px) rotateX(3deg) scale(1);
-    }
-
-    .envelope-border {
-        top: 70px;
-        left: 16px;
-        right: 16px;
-    }
-
-    .envelope-to {
-        bottom: 40px;
-        font-size: 1.1rem;
-    }
-
-    .modal-content {
-        padding: 2rem 1.3rem;
     }
 }
 
