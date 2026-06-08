@@ -554,6 +554,10 @@ async function showLongLetter() {
 
 quizContinueBtn.addEventListener('click', async () => {
     if (letterTyped) return; // 长信只打一次
+
+    // 关闭问答全屏遮罩
+    quizSection.classList.add('hidden');
+
     await showLongLetter();
 
     // 长信打完后，延迟显示情话和相册
