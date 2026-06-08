@@ -1437,14 +1437,16 @@ body.intro-ready .music-control {
 }
 
 .long-letter-section.reveal {
-    background: rgba(20, 10, 15, 0.65);
+    background: rgba(12, 6, 10, 0.92);
     pointer-events: auto;
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
 }
 
 .letter-paper-wrapper {
     opacity: 0;
     transform: translateY(40px) scale(0.96);
-    transition: opacity 0.7s ease 0.3s, transform 0.7s ease 0.3s;
+    transition: opacity 0.8s ease 0.3s, transform 0.8s ease 0.3s;
     max-width: 90%;
     width: 580px;
     max-height: 85vh;
@@ -1454,6 +1456,30 @@ body.intro-ready .music-control {
 .long-letter-section.reveal .letter-paper-wrapper {
     opacity: 1;
     transform: translateY(0) scale(1);
+}
+
+/* 信纸樱花粒子 */
+.letter-sakura {
+    position: absolute;
+    top: -20px;
+    z-index: 0;
+    pointer-events: none;
+    animation: sakuraFall var(--ls-duration) linear var(--ls-delay) infinite;
+    opacity: 0.55;
+    font-size: var(--ls-size);
+}
+
+@keyframes sakuraFall {
+    0% {
+        top: -20px;
+        transform: translateX(0) rotate(0deg);
+        opacity: 0.6;
+    }
+    100% {
+        top: calc(100vh + 20px);
+        transform: translateX(var(--ls-sway)) rotate(var(--ls-rotate));
+        opacity: 0;
+    }
 }
 
 .letter-paper {
@@ -1497,8 +1523,13 @@ body.intro-ready .music-control {
 .letter-body {
     font-size: 1.1rem;
     line-height: 2;
-    min-height: 2em;
+    min-height: 18em;
     white-space: pre-wrap;
+}
+
+.letter-body:empty::before {
+    content: '\00a0';
+    display: block;
 }
 
 .letter-body.typing::after {

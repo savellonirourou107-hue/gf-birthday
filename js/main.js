@@ -517,11 +517,37 @@ function typeLetter(text, element, speed = 70) {
     });
 }
 
+function initLetterSakura() {
+    const layer = document.getElementById('letter-sakura-layer');
+    if (!layer) return;
+    layer.innerHTML = '';
+    const petals = ['🌸', '💮', '🌺'];
+    for (let i = 0; i < 28; i++) {
+        const p = document.createElement('span');
+        p.className = 'letter-sakura';
+        p.textContent = petals[Math.floor(Math.random() * petals.length)];
+        p.style.setProperty('--ls-size', `${Math.random() * 14 + 12}px`);
+        p.style.setProperty('--ls-duration', `${(Math.random() * 8 + 10).toFixed(1)}s`);
+        p.style.setProperty('--ls-delay', `${(-Math.random() * 14).toFixed(1)}s`);
+        p.style.setProperty('--ls-rotate', `${(Math.random() - 0.5) * 360}deg`);
+        p.style.setProperty('--ls-sway', `${(Math.random() - 0.5) * 100}px`);
+        p.style.left = `${Math.random() * 100}%`;
+        layer.appendChild(p);
+    }
+}
+
 function showLongLetter() {
     if (!longLetter) return;
     letterBody.textContent = '';
     letterSign.classList.remove('visible');
     letterSign.classList.add('hidden');
+    const letterDone = document.getElementById('letter-done');
+    if (letterDone) {
+        letterDone.classList.remove('visible');
+        letterDone.classList.add('hidden');
+    }
+
+    initLetterSakura();
 
     // 显现长信遮罩，背景变暗，信纸浮入
     longLetter.classList.remove('hidden');
