@@ -491,24 +491,38 @@ function typeLetter(text, element, speed = 70) {
 }
 
 async function showLongLetter() {
-    longLetter.classList.remove('hidden');
+    if (!longLetter) return;
+
     letterBody.textContent = '';
+    letterSign.classList.remove('visible');
     letterSign.classList.add('hidden');
 
-    // 滚动到长信
-    longLetter.scrollIntoView({ behavior: 'smooth' });
+    // 先显示，触发进场动画
+    longLetter.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        longLetter.classList.add('reveal');
+    });
 
-    // 逐字打印
+    // 确保用户能看到长信
+    setTimeout(() => {
+        longLetter.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+
+    // 等动画到位后开始打字
+    await new Promise(r => setTimeout(r, 500));
     await typeLetter(letterText, letterBody, 65);
 
     // 打印完毕，显示签名和日期
     const today = new Date();
     letterSignDate.textContent = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
+    letterSign.classList.remove('hidden');
     letterSign.classList.add('visible');
     letterTyped = true;
 
-    // 再滚动一下确保签名可见
-    letterSign.scrollIntoView({ behavior: 'smooth' });
+    // 滚动到底部确保签名可见
+    setTimeout(() => {
+        letterSign.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 200);
 }
 
 quizContinueBtn.addEventListener('click', async () => {

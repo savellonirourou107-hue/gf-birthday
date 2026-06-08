@@ -1375,10 +1375,18 @@ body.intro-ready .music-control {
 /* 长信样式 */
 .long-letter-section {
     margin: 2.5rem 0;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
 }
 
 .long-letter-section.hidden {
     display: none;
+}
+
+.long-letter-section.reveal {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .letter-paper {
@@ -1444,6 +1452,10 @@ body.intro-ready .music-control {
     opacity: 0;
     transform: translateY(10px);
     transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.letter-sign.hidden {
+    display: none;
 }
 
 .letter-sign.visible {
