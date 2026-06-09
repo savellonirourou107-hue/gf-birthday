@@ -20,6 +20,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/optimizations.css">
 </head>
 <body class="intro-pending">
     <!-- 背景粒子层 -->
@@ -176,6 +177,7 @@
 
     <!-- 留言板侧边栏 -->
     <div class="message-board">
+        <button class="message-board-close" id="message-board-close" aria-label="关闭留言板">×</button>
         <h2>给小团留句话吧</h2>
         <div class="message-container">
             <div class="messages" id="message-list"></div>
@@ -203,6 +205,9 @@
             <span id="music-time" class="music-time">0:00</span>
         </div>
     </div>
+
+    <!-- 分享 Toast -->
+    <div id="share-toast" class="share-toast">链接已复制</div>
 
     <script src="js/main.js"></script>
 </body>

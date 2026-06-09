@@ -117,7 +117,11 @@ function toggleMusic() {
 }
 
 // 事件监听
-refreshButton.addEventListener('click', showRandomMessage);
+refreshButton.addEventListener('click', () => {
+    refreshButton.classList.add('spinning');
+    showRandomMessage();
+    setTimeout(() => refreshButton.classList.remove('spinning'), 500);
+});
 musicButton.addEventListener('click', toggleMusic);
 musicToggle.addEventListener('click', () => {
     musicPlayer.classList.toggle('expanded');
@@ -192,6 +196,15 @@ function initMessageObserver() {
     observer.observe(loveMessage);
 }
 
+// Toast 提示
+function showToast(text) {
+    const toast = document.getElementById('share-toast');
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(toast._timeout);
+    toast._timeout = setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
 // 分享功能
 const shareButton = document.getElementById('share-btn');
 shareButton.addEventListener('click', async () => {
@@ -210,7 +223,7 @@ shareButton.addEventListener('click', async () => {
             dummy.select();
             document.execCommand('copy');
             document.body.removeChild(dummy);
-            alert('链接已复制到剪贴板！');
+            showToast('链接已复制');
         }
     } catch (error) {
         console.error('分享失败:', error);
@@ -323,6 +336,11 @@ document.addEventListener('click', (e) => {
 
 // 事件监听
 messageBoardToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleMessageBoard();
+});
+
+document.getElementById('message-board-close').addEventListener('click', (e) => {
     e.stopPropagation();
     toggleMessageBoard();
 });
@@ -623,11 +641,14 @@ document.getElementById('letter-continue-btn').addEventListener('click', () => {
         setOverlayActive(false);
     }, 600);
 
+    document.querySelector('.page-title').classList.add('entrance-anim');
     document.querySelector('.love-message').classList.add('delayed-reveal');
     document.querySelector('.album-section').classList.add('delayed-reveal');
+    document.querySelector('.button-group').classList.add('delayed-reveal');
     requestAnimationFrame(() => {
         document.querySelector('.love-message').classList.add('visible');
         document.querySelector('.album-section').classList.add('visible');
+        document.querySelector('.button-group').classList.add('visible');
     });
 
     setTimeout(() => {
