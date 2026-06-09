@@ -662,3 +662,79 @@ document.getElementById('letter-continue-btn').addEventListener('click', () => {
 
 // 所有 DOM 引用就绪后再启动情话监听
 initMessageObserver();
+
+// 照片灯箱
+const photoLightbox = document.getElementById('photo-lightbox');
+const lightboxImg = document.getElementById('lightbox-img');
+const lightboxCaption = document.getElementById('lightbox-caption');
+const lightboxDots = document.getElementById('lightbox-dots');
+const photoCards = document.querySelectorAll('.photo-card');
+let lightboxIndex = 0;
+
+function openLightbox(index) {
+    lightboxIndex = index;
+    const card = photoCards[index];
+    const img = card.querySelector('img');
+    const caption = card.querySelector('.polaroid-caption');
+    lightboxImg.src = img.src;
+    lightboxImg.alt = img.alt;
+    lightboxCaption.textContent = caption.textContent;
+    lightboxImg.classList.remove('switching');
+    renderDots();
+    photoLightbox.classList.remove('hidden');
+    requestAnimationFrame(() => photoLightbox.classList.add('fade-in'));
+    document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+    photoLightbox.classList.remove('fade-in');
+    photoLightbox.classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function navigateLightbox(dir) {
+    const total = photoCards.length;
+    lightboxIndex = (lightboxIndex + dir + total) % total;
+    const card = photoCards[lightboxIndex];
+    lightboxImg.classList.add('switching');
+    setTimeout(() => {
+        lightboxImg.src = card.querySelector('img').src;
+        lightboxImg.alt = card.querySelector('img').alt;
+        lightboxCaption.textContent = card.querySelector('.polaroid-caption').textContent;
+        lightboxImg.classList.remove('switching');
+        renderDots();
+    }, 300);
+}
+
+function renderDots() {
+    lightboxDots.innerHTML = Array.from(photoCards).map((_, i) =>
+        `<span class="lightbox-dot ${i === lightboxIndex ? 'active' : ''}"></span>`
+    ).join('');
+}
+
+photoCards.forEach((card, i) => {
+    card.addEventListener('click', () => openLightbox(i));
+});
+
+document.querySelector('.lightbox-close').addEventListener('click', closeLightbox);
+document.querySelector('.lightbox-prev').addEventListener('click', () => navigateLightbox(-1));
+document.querySelector('.lightbox-next').addEventListener('click', () => navigateLightbox(1));
+
+photoLightbox.addEventListener('click', (e) => {
+    if (e.target === photoLightbox) closeLightbox();
+});
+
+document.addEventListener('keydown', (e) => {
+    if (photoLightbox.classList.contains('hidden')) return;
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowLeft') navigateLightbox(-1);
+    if (e.key === 'ArrowRight') navigateLightbox(1);
+});
+
+// 触摸滑动
+let touchStartX = 0;
+photoLightbox.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+photoLightbox.addEventListener('touchend', (e) => {
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 60) navigateLightbox(diff > 0 ? 1 : -1);
+});
