@@ -150,3 +150,129 @@
 	transform: translateY(0);
 }
 
+/* ══════════════════════════════════════
+   优化 12：UI 系统重构
+   ══════════════════════════════════════ */
+
+/* ── 容器最大读宽 ── */
+.container {
+	max-width: min(90%, var(--max-read-width));
+}
+
+/* ── 情话左对齐 + 读宽控制 ── */
+.love-message {
+	text-align: left;
+	max-width: var(--max-read-width);
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.message {
+	text-align: left;
+	padding: 0 0.5rem;
+	font-size: 1.35rem;
+	line-height: var(--line-height-relaxed);
+}
+
+.message-decoration {
+	flex-shrink: 0;
+}
+
+/* ── 按钮统一 ── */
+.modal-start-btn,
+.heart-btn,
+.share-btn,
+#send-btn {
+	font-family: var(--font-main);
+	font-size: 1rem;
+}
+
+.modal-start-btn {
+	padding: var(--btn-padding);
+	border-radius: var(--btn-radius);
+	box-shadow: var(--btn-shadow);
+}
+
+.modal-start-btn:focus-visible {
+	outline: 3px solid var(--color-accent);
+	outline-offset: 2px;
+}
+
+.heart-btn:focus-visible,
+.share-btn:focus-visible {
+	outline: 3px solid var(--color-accent);
+	outline-offset: 2px;
+	border-radius: 50%;
+}
+
+/* ── 情话区域间距 ── */
+.love-message {
+	margin-bottom: var(--space-5);
+}
+
+.page-title {
+	margin-bottom: var(--space-5);
+}
+
+.button-group {
+	gap: var(--space-4);
+	margin-bottom: var(--space-6);
+}
+
+/* ── 照片卡间距 ── */
+.album-section {
+	margin: var(--space-6) 0;
+	padding: var(--space-4) 0;
+}
+
+.album {
+	gap: var(--space-4);
+}
+
+/* ── 页脚留白 ── */
+.container {
+	padding-bottom: var(--space-6);
+}
+
+/* ── 焦点可见（键盘导航） ── */
+button:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+	outline: 3px solid var(--color-accent);
+	outline-offset: 2px;
+}
+
+/* ── 长信左对齐（不改变字体） ── */
+.letter-body {
+	text-align: left;
+	line-height: 30px;
+}
+
+/* ── 移动端优化 ── */
+@media (max-width: 768px) {
+	body {
+		padding: 1.5rem 0.75rem;
+	}
+
+	.container {
+		padding: 1.5rem 1rem;
+		border-radius: 16px;
+	}
+
+	.message {
+		font-size: 1.15rem;
+		padding: 0 0.25rem;
+	}
+
+	.message-decoration {
+		font-size: 1.2rem;
+	}
+
+	.button-group {
+		gap: var(--space-3);
+	}
+
+	.album {
+		gap: var(--space-3);
+	}
+}

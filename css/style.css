@@ -6,22 +6,54 @@
 }
 
 :root {
+    /* 60-30-10 配色 */
+    --color-primary: #fce4ec;      /* 60% 主色：柔粉 */
+    --color-secondary: #c45a80;    /* 30% 次色：深玫红 */
+    --color-accent: #f4a460;       /* 10% 强调：暖金 */
+    --color-bg: #faf3f0;           /* 页面底色：暖米白 */
+    --color-surface: rgba(255,255,255,0.65);
+    --color-text: #3a2520;         /* 正文色：深褐 */
+    --color-text-light: #6b5048;   /* 辅助文字 */
+
+    /* 字体 */
     --font-main: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
     --font-serif: "Songti SC", "STSong", "SimSun", serif;
     --font-hand: "Ma Shan Zheng", "STXingkai", "KaiTi", cursive;
+
+    /* 排版 */
+    --text-base: 16px;
+    --line-height: 1.6;
+    --line-height-relaxed: 1.75;
+    --max-read-width: 680px;
+
+    /* 间距（8px 网格） */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 16px;
+    --space-4: 24px;
+    --space-5: 32px;
+    --space-6: 48px;
+
+    /* 按钮 */
+    --btn-radius: 50px;
+    --btn-padding: 0.7rem 2rem;
+    --btn-shadow: 0 4px 14px rgba(196, 90, 128, 0.25);
+
+    /* 旧变量兼容 */
     --petal-pink: #ffb7c5;
     --ink-brown: #5c3d2e;
 }
 
 body {
     min-height: 100vh;
-    background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%);
+    background: linear-gradient(160deg, #fce4ec 0%, #f8e8e0 40%, #faf3f0 100%);
     font-family: var(--font-main);
+    font-size: var(--text-base);
     position: relative;
     padding: 3rem 1rem;
-    background-attachment: scroll;
-    color: #2d1f1f;
-    line-height: 1.6;
+    background-attachment: fixed;
+    color: var(--color-text);
+    line-height: var(--line-height);
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
 }
