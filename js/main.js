@@ -36,7 +36,7 @@ let hasTypedInitialMessage = false;
 function showRandomMessage() {
     const randomIndex = Math.floor(Math.random() * loveMessages.length);
     messageElement.classList.add('visible');
-    typeWriter(messageElement, loveMessages[randomIndex], 80);
+    typeWriter(messageElement, loveMessages[randomIndex], 107);
 }
 
 // 初始化背景粒子
@@ -153,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // 添加打字机效果
-function typeWriter(element, text, speed = 80) {
+function typeWriter(element, text, speed = 107) {
     clearTimeout(typeTimer);
     let i = 0;
     element.textContent = '';
@@ -545,7 +545,7 @@ const letterSign = document.getElementById('letter-sign');
 const letterSignDate = document.querySelector('.letter-sign-date');
 let letterTyped = false;
 
-function typeLetter(text, element, speed = 70) {
+function typeLetter(text, element, speed = 93) {
     return new Promise(resolve => {
         element.classList.add('typing');
         let i = 0;
@@ -613,7 +613,7 @@ quizContinueBtn.addEventListener('click', async () => {
     }, 400);
 
     await new Promise(r => setTimeout(r, 1100));
-    await typeLetter(letterText, letterBody, 65);
+    await typeLetter(letterText, letterBody, 87);
 
     // 打印完毕，显示签名和日期
     const today = new Date();

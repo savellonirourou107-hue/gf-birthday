@@ -150,113 +150,28 @@
 	transform: translateY(0);
 }
 
-/* ── 优化 11：中世纪羊皮信纸 ── */
+/* ── 优化 11：中世纪羊皮信纸（修复版）── */
+
+/* 纸纹 + 污渍 SVG 滤镜在 index.html 中 */
+
 .letter-paper {
-	/* 基础羊皮纸色：温暖的茶褐到琥珀渐变 */
+	/* 羊皮纸底色 */
 	background:
-		/* 水渍/年代斑 */
-		radial-gradient(ellipse at 18% 22%, rgba(139, 90, 43, 0.25) 0%, transparent 40%),
-		radial-gradient(ellipse at 82% 68%, rgba(160, 100, 50, 0.18) 0%, transparent 35%),
-		radial-gradient(ellipse at 45% 55%, rgba(180, 120, 60, 0.12) 0%, transparent 50%),
-		radial-gradient(ellipse at 70% 15%, rgba(120, 75, 35, 0.15) 0%, transparent 28%),
-		/* 纵向纹理：模拟纤维 */
+		radial-gradient(ellipse at 18% 22%, rgba(139, 90, 43, 0.16) 0%, transparent 40%),
+		radial-gradient(ellipse at 82% 68%, rgba(160, 100, 50, 0.10) 0%, transparent 35%),
+		radial-gradient(ellipse at 45% 55%, rgba(180, 120, 60, 0.07) 0%, transparent 50%),
+		radial-gradient(ellipse at 70% 15%, rgba(120, 75, 35, 0.09) 0%, transparent 28%),
 		repeating-linear-gradient(
 			92deg,
 			transparent 0px 2px,
-			rgba(100, 55, 25, 0.03) 2px 4px,
+			rgba(100, 55, 25, 0.02) 2px 4px,
 			transparent 4px 6px,
-			rgba(100, 55, 25, 0.02) 6px 8px
-		),
-		/* 主流渐变色 */
-		linear-gradient(
-			175deg,
-			#e8d5b0 0%,   /* 亮茶色 */
-			#dcc8a0 12%,  /* 暖驼色 */
-			#e9d7b5 25%,  /* 浅羊皮 */
-			#d4b88c 45%,  /* 偏橙肤 */
-			#dcc5a2 60%,  /* 回到浅调 */
-			#c9a87a 80%,  /* 深色边缘 */
-			#ba8d5d 100%  /* 焦茶边角 */
-		);
-	/* 替换原背景 */
-	background-color: #d4b88c;
-	/* 纸纹滤镜 */
-	filter: url(#parchment-texture);
-	/* 边缘暗角 */
-	box-shadow:
-		inset 0 0 80px 30px rgba(80, 40, 15, 0.35),
-		inset 0 0 20px 5px rgba(60, 30, 10, 0.2),
-		0 0 60px rgba(255, 160, 100, 0.12),
-		0 20px 50px rgba(0, 0, 0, 0.38),
-		0 3px 8px rgba(72, 33, 23, 0.12);
-	/* 边缘：不规则弧形（模拟手工裁切） */
-	border-radius: 4px 6px 5px 3px;
-	/* 微倾 */
-	transform: rotate(-0.15deg);
-	/* 文字色适配 */
-	color: #3a2010;
-	/* 横线适配 */
-	background-size: auto, auto, auto, auto, auto, auto;
-}
-
-/* 信纸表面微光（高光） */
-.letter-paper::before {
-	content: '';
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background: linear-gradient(
-		155deg,
-		rgba(255, 240, 210, 0.14) 0%,
-		transparent 35%,
-		transparent 55%,
-		rgba(60, 25, 5, 0.06) 100%
-	);
-	border-radius: inherit;
-	pointer-events: none;
-	z-index: 0;
-}
-
-/* 信纸焦边效果 */
-.letter-paper::after {
-	content: '';
-	position: absolute;
-	inset: 0;
-	border-radius: inherit;
-	box-shadow: inset 0 0 30px 8px rgba(40, 15, 5, 0.4);
-	pointer-events: none;
-	z-index: 1;
-}
-
-/* 确保文字在纹理之上 */
-.letter-dear,
-.letter-body,
-.letter-sign,
-.letter-done-btn {
-	position: relative;
-	z-index: 2;
-}
-
-/* 横线颜色适配 */
-.letter-paper {
-	background-image:
-		radial-gradient(ellipse at 18% 22%, rgba(139, 90, 43, 0.25) 0%, transparent 40%),
-		radial-gradient(ellipse at 82% 68%, rgba(160, 100, 50, 0.18) 0%, transparent 35%),
-		radial-gradient(ellipse at 45% 55%, rgba(180, 120, 60, 0.12) 0%, transparent 50%),
-		radial-gradient(ellipse at 70% 15%, rgba(120, 75, 35, 0.15) 0%, transparent 28%),
-		repeating-linear-gradient(
-			92deg,
-			transparent 0px 2px,
-			rgba(100, 55, 25, 0.03) 2px 4px,
-			transparent 4px 6px,
-			rgba(100, 55, 25, 0.02) 6px 8px
+			rgba(100, 55, 25, 0.015) 6px 8px
 		),
 		repeating-linear-gradient(
 			180deg,
 			transparent 0 29px,
-			rgba(120, 70, 35, 0.15) 30px 31px
+			rgba(120, 70, 35, 0.12) 30px 31px
 		),
 		linear-gradient(
 			175deg,
@@ -268,25 +183,76 @@
 			#c9a87a 80%,
 			#ba8d5d 100%
 		);
+	background-color: #d4b88c;
+	filter: url(#parchment-texture);
+
+	/* 暖调淡影 — 不再黑黢黢 */
+	box-shadow:
+		inset 0 0 40px 16px rgba(100, 55, 25, 0.18),
+		0 6px 20px rgba(120, 70, 40, 0.22),
+		0 2px 6px rgba(100, 60, 30, 0.12);
+
+	/* 不规则边 + 3D 微翻 */
+	border-radius: 3px 7px 5px 4px;
+	transform: perspective(900px) rotateX(1.5deg) rotateY(-0.8deg);
+	transform-origin: center center;
+
+	color: #3a2010;
+	overflow: visible;
 }
 
-/* 文字适配中世纪调 */
-.letter-dear {
-	color: #5c2612;
-	border-bottom-color: rgba(92, 38, 18, 0.28);
+/* 高光 — 羊皮纸表面光泽 */
+.letter-paper::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(
+		155deg,
+		rgba(255, 240, 210, 0.16) 0%,
+		transparent 30%,
+		transparent 60%,
+		rgba(80, 35, 15, 0.04) 100%
+	);
+	border-radius: inherit;
+	pointer-events: none;
+	z-index: 1;
 }
 
-.letter-sign-name {
-	color: #5c2612;
+/* 右下角翻卷上扬 */
+.letter-paper::after {
+	content: '';
+	position: absolute;
+	bottom: -3px;
+	right: -2px;
+	width: 55px;
+	height: 44px;
+	background: linear-gradient(135deg, rgba(70, 30, 15, 0.18) 0%, transparent 65%);
+	border-radius: 0 0 4px 0;
+	pointer-events: none;
+	z-index: 3;
+	transform: rotate(-4deg);
 }
 
-.letter-body.typing::after {
-	color: #5c2612;
+/* 文字层级 */
+.letter-dear,
+.letter-body,
+.letter-sign,
+.letter-done-btn {
+	position: relative;
+	z-index: 2;
 }
+
+/* 文字色适配 */
+.letter-dear { color: #5c2612; border-bottom-color: rgba(92, 38, 18, 0.28); }
+.letter-sign-name { color: #5c2612; }
+.letter-body.typing::after { color: #5c2612; }
 
 /* 移动端适配 */
 @media (max-width: 768px) {
 	.letter-paper {
-		background-size: auto, auto, auto, auto, auto, auto, auto;
+		padding: 1.5rem 1rem;
+		transform: perspective(900px) rotateX(1deg) rotateY(-0.5deg);
 	}
+	.letter-dear { font-size: 1.15rem; }
+	.letter-body { font-size: 0.98rem; }
 }
