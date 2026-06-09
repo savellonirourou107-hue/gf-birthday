@@ -433,6 +433,15 @@ a:focus-visible,
 	}
 }
 
+/* ── 照片占位 SVG ── */
+.photo-placeholder {
+	width: 100%;
+	height: calc(100% - 40px);
+	display: block;
+	border-radius: 2px;
+	pointer-events: none;
+}
+
 /* ── 移动端优化（续） ── */
 @media (max-width: 768px) {
 	body {

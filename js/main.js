@@ -675,9 +675,16 @@ function openLightbox(index) {
     lightboxIndex = index;
     const card = photoCards[index];
     const img = card.querySelector('img');
+    const svg = card.querySelector('.photo-placeholder');
     const caption = card.querySelector('.polaroid-caption');
-    lightboxImg.src = img.src;
-    lightboxImg.alt = img.alt;
+    if (img && img.src) {
+        lightboxImg.src = img.src;
+        lightboxImg.alt = img.alt;
+    } else if (svg) {
+        const svgData = new XMLSerializer().serializeToString(svg);
+        lightboxImg.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+        lightboxImg.alt = svg.getAttribute('aria-label') || '';
+    }
     lightboxCaption.textContent = caption.textContent;
     lightboxImg.classList.remove('switching');
     renderDots();
@@ -696,10 +703,18 @@ function navigateLightbox(dir) {
     const total = photoCards.length;
     lightboxIndex = (lightboxIndex + dir + total) % total;
     const card = photoCards[lightboxIndex];
+    const img = card.querySelector('img');
+    const svg = card.querySelector('.photo-placeholder');
     lightboxImg.classList.add('switching');
     setTimeout(() => {
-        lightboxImg.src = card.querySelector('img').src;
-        lightboxImg.alt = card.querySelector('img').alt;
+        if (img && img.src) {
+            lightboxImg.src = img.src;
+            lightboxImg.alt = img.alt;
+        } else if (svg) {
+            const svgData = new XMLSerializer().serializeToString(svg);
+            lightboxImg.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+            lightboxImg.alt = svg.getAttribute('aria-label') || '';
+        }
         lightboxCaption.textContent = card.querySelector('.polaroid-caption').textContent;
         lightboxImg.classList.remove('switching');
         renderDots();
