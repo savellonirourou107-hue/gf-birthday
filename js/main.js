@@ -230,81 +230,89 @@ shareButton.addEventListener('click', async () => {
     }
 });
 
-// 留言板功能
+// 古诗词名句集
+const loveQuotes = [
+    { text: '死生契阔，与子成说。执子之手，与子偕老。', source: '《诗经·邶风·击鼓》' },
+    { text: '山有木兮木有枝，心悦君兮君不知。', source: '《越人歌》' },
+    { text: '愿得一心人，白头不相离。', source: '卓文君《白头吟》' },
+    { text: '两情若是久长时，又岂在朝朝暮暮。', source: '秦观《鹊桥仙》' },
+    { text: '曾经沧海难为水，除却巫山不是云。', source: '元稹《离思》' },
+    { text: '身无彩凤双飞翼，心有灵犀一点通。', source: '李商隐《无题》' },
+    { text: '此情可待成追忆，只是当时已惘然。', source: '李商隐《锦瑟》' },
+    { text: '天长地久有时尽，此恨绵绵无绝期。', source: '白居易《长恨歌》' },
+    { text: '在天愿作比翼鸟，在地愿为连理枝。', source: '白居易《长恨歌》' },
+    { text: '衣带渐宽终不悔，为伊消得人憔悴。', source: '柳永《蝶恋花》' },
+    { text: '问世间情为何物，直教生死相许。', source: '元好问《摸鱼儿》' },
+    { text: '只愿君心似我心，定不负相思意。', source: '李之仪《卜算子》' },
+    { text: '金风玉露一相逢，便胜却人间无数。', source: '秦观《鹊桥仙》' },
+    { text: '玲珑骰子安红豆，入骨相思知不知。', source: '温庭筠《南歌子》' },
+    { text: '一寸相思千万绪，人间没个安排处。', source: '李冠《蝶恋花》' },
+    { text: '平生不会相思，才会相思，便害相思。', source: '徐再思《折桂令》' },
+    { text: '天涯地角有穷时，只有相思无尽处。', source: '晏殊《玉楼春》' },
+    { text: '似此星辰非昨夜，为谁风露立中宵。', source: '黄景仁《绮怀》' },
+    { text: '换我心，为你心，始知相忆深。', source: '顾夐《诉衷情》' },
+    { text: '相思相见知何日，此时此夜难为情。', source: '李白《三五七言》' },
+    { text: '落红不是无情物，化作春泥更护花。', source: '龚自珍《己亥杂诗》' },
+    { text: '相见时难别亦难，东风无力百花残。', source: '李商隐《无题》' },
+    { text: '月上柳梢头，人约黄昏后。', source: '欧阳修《生查子》' },
+    { text: '愿我如星君如月，夜夜流光相皎洁。', source: '范成大《车遥遥篇》' },
+    { text: '结发为夫妻，恩爱两不疑。', source: '苏武《留别妻》' },
+    { text: '山无陵，江水为竭。冬雷震震，夏雨雪。天地合，乃敢与君绝。', source: '《上邪》' },
+    { text: '一日不见兮，思之如狂。', source: '司马相如《凤求凰》' },
+    { text: '相思一夜梅花发，忽到窗前疑是君。', source: '卢仝《有所思》' },
+    { text: '若是前生未有缘，待重结、来生愿。', source: '乐婉《卜算子》' },
+    { text: '关关雎鸠，在河之洲。窈窕淑女，君子好逑。', source: '《诗经·关雎》' },
+];
+
 const messageList = document.getElementById('message-list');
-const nameInput = document.getElementById('name-input');
-const messageInput = document.getElementById('message-input');
-const sendButton = document.getElementById('send-btn');
+let quoteScrollTimer = null;
 
-// 存储留言的数组
-let messages = [];
-try {
-    messages = JSON.parse(localStorage.getItem('love_messages') || '[]');
-} catch (error) {
-    messages = [];
-    localStorage.removeItem('love_messages');
-}
-
-// 显示留言
-function displayMessages() {
-    messageList.innerHTML = messages.map(msg => `
+// 渲染诗句列表
+function renderQuotes() {
+    messageList.innerHTML = loveQuotes.map(q => `
         <div class="message-item">
-            <div class="message-name">${escapeHtml(msg.name)}</div>
-            <div class="message-content">${escapeHtml(msg.content)}</div>
+            <div class="message-name">${q.text}</div>
+            <div class="message-content">—— ${q.source}</div>
         </div>
     `).join('');
 }
 
-function escapeHtml(value) {
-    return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+// 自动滚动播放
+function startQuoteScroll() {
+    const container = messageList.parentElement;
+    if (!container) return;
+
+    let scrollPos = 0;
+    const scrollSpeed = 0.3; // px per frame, very gentle
+
+    function scroll() {
+        if (!document.querySelector('.message-board.active')) {
+            quoteScrollTimer = null;
+            return;
+        }
+        scrollPos += scrollSpeed;
+        container.scrollTop = scrollPos;
+
+        // 滚动到底后循环回顶部
+        if (scrollPos >= container.scrollHeight - container.clientHeight) {
+            scrollPos = 0;
+        }
+
+        quoteScrollTimer = requestAnimationFrame(scroll);
+    }
+
+    scroll();
 }
 
-// 添加新留言
-function addMessage() {
-    const name = nameInput.value.trim();
-    const content = messageInput.value.trim();
-    
-    if (!name || !content) {
-        alert('请填写名字和留言内容！');
-        return;
+function stopQuoteScroll() {
+    if (quoteScrollTimer) {
+        cancelAnimationFrame(quoteScrollTimer);
+        quoteScrollTimer = null;
     }
-    
-    const newMessage = {
-        name: name,
-        content: content,
-        time: new Date().toISOString()
-    };
-    
-    messages.unshift(newMessage);
-    if (messages.length > 50) messages.pop(); // 最多保存50条留言
-    
-    // 保存到本地存储
-    localStorage.setItem('love_messages', JSON.stringify(messages));
-    
-    // 更新显示
-    displayMessages();
-    
-    // 清空输入
-    nameInput.value = '';
-    messageInput.value = '';
 }
 
-// 事件监听
-sendButton.addEventListener('click', addMessage);
-messageInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        addMessage();
-    }
-});
-
-// 初始化显示留言
-displayMessages();
+// 初始化渲染
+renderQuotes();
 
 // 留言板控制
 const messageBoardToggle = document.getElementById('message-board-toggle');
@@ -316,11 +324,20 @@ function toggleMessageBoard() {
     isMessageBoardOpen = !isMessageBoardOpen;
     messageBoard.classList.toggle('active');
     messageBoardToggle.style.right = isMessageBoardOpen ? '400px' : '20px';
-    
+
+    if (isMessageBoardOpen) {
+        // 每次打开时从顶部开始
+        const container = messageBoard.querySelector('.message-container');
+        if (container) container.scrollTop = 0;
+        startQuoteScroll();
+    } else {
+        stopQuoteScroll();
+    }
+
     // 移动端适配
     if (window.innerWidth <= 768) {
         messageBoardToggle.style.right = isMessageBoardOpen ? '10px' : '10px';
-        messageBoardToggle.querySelector('.toggle-icon').style.transform = 
+        messageBoardToggle.querySelector('.toggle-icon').style.transform =
             isMessageBoardOpen ? 'rotate(180deg)' : 'rotate(0)';
     }
 }
