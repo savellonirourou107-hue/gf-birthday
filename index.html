@@ -131,6 +131,14 @@
         </div>
     </div>
 
+    <!-- 蛋糕入口 -->
+    <div class="cake-entry">
+        <button id="cake-icon-btn" class="cake-icon-btn" title="点蜡烛许愿">
+            <span class="cake-icon-emoji">🎂</span>
+            <span class="cake-icon-label">点蜡烛</span>
+        </button>
+    </div>
+
     <!-- 问答区域 -->
     <div id="quiz-section" class="quiz-section hidden">
         <div id="quiz-particles" class="quiz-particles-layer" aria-hidden="true"></div>
@@ -224,6 +232,31 @@
         <div class="lightbox-dots" id="lightbox-dots"></div>
     </div>
 
+    <!-- 3D蛋糕场景 -->
+    <div id="cake-scene-container" class="cake-scene-container hidden">
+        <div id="cake-canvas-wrap" class="cake-canvas-wrap"></div>
+        <!-- 许愿信纸overlay -->
+        <div id="wish-overlay" class="wish-overlay hidden">
+            <div class="wish-paper">
+                <p class="wish-title">许个愿吧 ✨</p>
+                <textarea id="wish-input" class="wish-input" placeholder="在这里写下你的愿望..." maxlength="200"></textarea>
+                <button id="wish-done-btn" class="wish-done-btn">我写好了</button>
+            </div>
+        </div>
+        <!-- 提示文字 -->
+        <div id="cake-hint" class="cake-hint"></div>
+        <!-- 关闭按钮 -->
+        <button id="cake-close-btn" class="cake-close-btn hidden">✕</button>
+    </div>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+    </script>
     <script src="js/main.js"></script>
 </body>
 </html> 

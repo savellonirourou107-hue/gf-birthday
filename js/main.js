@@ -782,10 +782,12 @@ document.getElementById('letter-continue-btn').addEventListener('click', () => {
     document.querySelector('.love-message').classList.add('delayed-reveal');
     document.querySelector('.album-section').classList.add('delayed-reveal');
     document.querySelector('.button-group').classList.add('delayed-reveal');
+    document.querySelector('.cake-entry').classList.add('delayed-reveal');
     requestAnimationFrame(() => {
         document.querySelector('.love-message').classList.add('visible');
         document.querySelector('.album-section').classList.add('visible');
         document.querySelector('.button-group').classList.add('visible');
+        document.querySelector('.cake-entry').classList.add('visible');
     });
 
     setTimeout(() => {
@@ -902,3 +904,128 @@ photoLightbox.addEventListener('touchcancel', () => {
     touchStartX = 0;
     touchStartY = 0;
 });
+
+// ══════════════════════════════════════
+// 3D 蛋糕场景 (使用 CakeScene 模块)
+// ══════════════════════════════════════
+
+const cakeIconBtn = document.getElementById('cake-icon-btn');
+const cakeSceneContainer = document.getElementById('cake-scene-container');
+const cakeCanvasWrap = document.getElementById('cake-canvas-wrap');
+const cakeHint = document.getElementById('cake-hint');
+const cakeCloseBtn = document.getElementById('cake-close-btn');
+const wishOverlay = document.getElementById('wish-overlay');
+const wishInput = document.getElementById('wish-input');
+const wishDoneBtn = document.getElementById('wish-done-btn');
+
+let cakeScene = null;
+
+// 监听 CakeScene 的 cake-hint 自定义事件，同步到 #cake-hint 元素
+window.addEventListener('cake-hint', (e) => {
+    const { text, visible } = e.detail;
+    if (visible && text) {
+        cakeHint.textContent = text;
+        cakeHint.classList.add('visible');
+    } else {
+        cakeHint.classList.remove('visible');
+    }
+});
+
+// 打开蛋糕场景
+cakeIconBtn.addEventListener('click', async () => {
+    setOverlayActive(true);
+    // 隐藏主页面
+    document.querySelector('.container').style.display = 'none';
+    // 显示蛋糕场景
+    cakeSceneContainer.classList.remove('hidden');
+    cakeCloseBtn.classList.add('hidden');
+    wishOverlay.classList.add('hidden');
+    cakeHint.classList.remove('visible');
+
+    // 动态加载 CakeScene 模块
+    try {
+        if (!cakeScene) {
+            const { CakeScene } = await import('./cake-scene.js');
+            cakeScene = new CakeScene();
+            cakeScene.init(cakeCanvasWrap);
+        }
+        cakeScene.start();
+
+        // 2秒后提示许愿
+        setTimeout(() => {
+            cakeScene.showHint('许个愿吧 ✨');
+        }, 2000);
+
+        // 2.5秒后显示许愿信纸
+        setTimeout(() => {
+            wishOverlay.classList.remove('hidden');
+            wishInput.focus();
+        }, 2500);
+
+    } catch (err) {
+        console.warn('蛋糕场景加载失败:', err);
+        cakeHint.textContent = '蛋糕加载失败，请刷新重试~';
+        cakeHint.classList.add('visible');
+    }
+});
+
+// 许愿完成 → 纸鹤 → 吹蜡烛 → 庆祝流程
+wishDoneBtn.addEventListener('click', () => {
+    wishOverlay.classList.add('hidden');
+    if (!cakeScene) return;
+    cakeScene.hideHint();
+
+    // 在 3D 场景中显示许愿纸
+    cakeScene.showWishPaper();
+
+    // 1.5 秒后折成纸鹤飞走
+    setTimeout(async () => {
+        await cakeScene.foldToCrane();
+        // 纸鹤飞走后 → 提示吹蜡烛
+        cakeScene.showHint('吹蜡烛 🎈');
+
+        // 等待用户点击蛋糕画布来吹蜡烛
+        const onCanvasClick = async () => {
+            cakeCanvasWrap.removeEventListener('click', onCanvasClick);
+            cakeScene.hideHint();
+            await cakeScene.blowCandles();
+            // 吹完蜡烛 → 庆祝 (showConfetti 已在 blowCandles 内部调用)
+            cakeScene.showHint('可以吃蛋糕啦 🎉');
+            // 显示关闭按钮
+            cakeCloseBtn.classList.remove('hidden');
+        };
+        cakeCanvasWrap.addEventListener('click', onCanvasClick);
+    }, 1500);
+});
+
+// 关闭蛋糕场景
+cakeCloseBtn.addEventListener('click', () => {
+    if (cakeScene) {
+        cakeScene.dispose();
+        cakeScene = null;
+    }
+    cakeSceneContainer.classList.add('hidden');
+    document.querySelector('.container').style.display = '';
+    setOverlayActive(false);
+});
+
+// ESC 关闭蛋糕场景
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && cakeSceneContainer && !cakeSceneContainer.classList.contains('hidden')) {
+        if (!wishOverlay.classList.contains('hidden')) {
+            // 如果许愿信纸开着，先关信纸
+            wishOverlay.classList.add('hidden');
+            if (cakeScene) cakeScene.showHint('按 ESC 可关闭蛋糕');
+            setTimeout(() => { if (cakeScene) cakeScene.hideHint(); }, 2000);
+        } else {
+            if (cakeScene) {
+                cakeScene.dispose();
+                cakeScene = null;
+            }
+            cakeSceneContainer.classList.add('hidden');
+            document.querySelector('.container').style.display = '';
+            setOverlayActive(false);
+        }
+    }
+});
+

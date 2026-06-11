@@ -1,0 +1,25 @@
+{
+  "name": "小团，生日快乐",
+  "short_name": "小团生日",
+  "description": "阳写给小团的生日信",
+  "start_url": "/gf-birthday/",
+  "scope": "/gf-birthday/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#ff8fa3",
+  "background_color": "#faf3f0",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "assets/images/preview.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "assets/images/preview.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
