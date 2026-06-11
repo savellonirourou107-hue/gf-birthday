@@ -384,34 +384,24 @@ function renderSkyPoems() {
 // 自动滚动
 function startSkyAutoScroll() {
     if (skyUserInteracted) return;
-    // 内容不够滚动就不启动
     if (skyPoemScroll.scrollHeight <= skyPoemScroll.clientHeight) return;
     stopSkyAutoScroll();
-    const scrollSpeed = 28; // px/s
-    let lastTime = performance.now();
-    function tick(now) {
+    skyAutoScrollTimer = setInterval(() => {
         if (!skyOpen || skyUserInteracted) {
-            skyAutoScrollTimer = null;
+            stopSkyAutoScroll();
             return;
         }
-        const dt = (now - lastTime) / 1000;
-        lastTime = now;
-        skyPoemScroll.scrollTop += scrollSpeed * dt;
-        const bottom = skyPoemScroll.scrollHeight - skyPoemScroll.clientHeight - skyPoemScroll.scrollTop;
-        if (bottom < 4) {
+        skyPoemScroll.scrollTop += 1;
+        if (skyPoemScroll.scrollHeight - skyPoemScroll.clientHeight - skyPoemScroll.scrollTop < 4) {
             skyExitBtn.classList.add('glow');
             stopSkyAutoScroll();
-            skyAutoScrollTimer = null;
-            return;
         }
-        skyAutoScrollTimer = requestAnimationFrame(tick);
-    }
-    skyAutoScrollTimer = requestAnimationFrame(tick);
+    }, 35);
 }
 
 function stopSkyAutoScroll() {
     if (skyAutoScrollTimer) {
-        cancelAnimationFrame(skyAutoScrollTimer);
+        clearInterval(skyAutoScrollTimer);
         skyAutoScrollTimer = null;
     }
 }
