@@ -4,6 +4,7 @@
  */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // ═══ 工具函数 ═══
 const rand = (min, max) => Math.random() * (max - min) + min;
@@ -36,11 +37,12 @@ export class CakeScene {
     this.shootingStars = [];
     this.nextShootingStar = 0;
     this.wishPaper = null;
-    this.wishPaperBaseVerts = null;
     this.paperAnimState = null;
     this.craneGroup = null;
-    this.craneAll = [];
-    this.craneWings = null;
+    this.craneModel = null;        // 缓存的千纸鹤 GLB 模型
+    this._loadingModel = false;
+    this.transformationParticles = null;
+    this.flashSphere = null;
     this.confettiParticles = [];
     this.container = null;
   }
@@ -507,29 +509,23 @@ export class CakeScene {
     }
   }
 
-  // ─── 许愿纸（高分辨率正方形，支持顶点折叠动画）───
+  // ═══ 许愿纸 → 千纸鹤魔法变身 ═══
+
+  // ─── 显示许愿纸（简洁平面，无细分）───
   showWishPaper() {
     if (this.wishPaper) return;
-    const segs = 16, geo = new THREE.PlaneGeometry(1.5, 1.5, segs, segs);
+    const geo = new THREE.PlaneGeometry(2.0, 2.5, 1, 1);
     const mat = new THREE.MeshStandardMaterial({
       color: '#FFF8E7', roughness: 0.55, metalness: 0.02,
       side: THREE.DoubleSide, emissive: '#FFF8E7', emissiveIntensity: 0.08,
+      transparent: true, opacity: 1.0,
     });
     this.wishPaper = new THREE.Mesh(geo, mat);
     this.wishPaper.position.set(0, 1.8, 2.2);
     this.wishPaper.rotation.x = -0.3;
     this.wishPaper.castShadow = this.wishPaper.receiveShadow = true;
-    // 折痕边线（随折叠过程动态更新）
-    const edgeGeo = new THREE.EdgesGeometry(geo, 20);
-    this._foldEdgeLine = new THREE.LineSegments(edgeGeo,
-      new THREE.LineBasicMaterial({ color: '#c8b898', transparent: true, opacity: 0.4, depthTest: true }));
-    this._foldEdgeLine.renderOrder = 1;
-    this.wishPaper.add(this._foldEdgeLine);
-    // 保存基础顶点 & 预计算 5 个折叠阶段的目标位置
-    this._foldBaseVerts = new Float32Array(geo.attributes.position.array);
-    this._initFoldStages(segs);
     this.scene.add(this.wishPaper);
-    this.paperAnimState = { phase: 'floating', startTime: 0, foldProgress: 0, flyProgress: 0, baseY: 1.8 };
+    this.paperAnimState = { phase: 'floating', startTime: 0, baseY: 1.8 };
   }
 
   _animPaper(t) {
@@ -539,254 +535,230 @@ export class CakeScene {
       // 纸张漂浮微动
       this.wishPaper.position.y = s.baseY + Math.sin(t * 1.5) * 0.08;
       this.wishPaper.rotation.z = Math.sin(t * 0.7) * 0.05;
+      return;
     }
-    if (s.phase === 'folding') {
-      // 驱动顶点折叠动画，总时长 6 秒
-      const elapsed = t - s.startTime;
-      s.foldProgress = Math.min(elapsed / 6.0, 1.0);
-      this._updateFoldGeometry(s.foldProgress);
-      // 折叠过程中纸张轻微上下浮动
-      this.wishPaper.position.y = s.baseY + Math.sin(t * 2.5) * 0.04 * (1 - s.foldProgress);
-      if (s.foldProgress >= 1.0) { s.phase = 'folded'; s.startTime = t; }
+    if (s.phase === 'transforming') this._animTransform(t, s);
+  }
+
+  // ─── 魔法变身动画：发光 → 爆发 → 揭示 (总计 3.5s) ───
+  _animTransform(t, s) {
+    const elapsed = t - s.startTime;
+    if (elapsed >= 3.5) {
+      // 变身完成 → 千纸鹤接手悬停
+      s.phase = 'pausing'; s.startTime = t;
+      this.wishPaper.visible = false;
+      if (this.flashSphere) this.flashSphere.visible = false;
+      return;
+    }
+    // 阶段1：发光 (0~1.5s) — 纸发光 + 粒子螺旋汇聚
+    if (elapsed < 1.5) {
+      const p = eio(elapsed / 1.5);
+      this.wishPaper.material.emissiveIntensity = 0.08 + p * 0.72;
+      if (this.transformationParticles) {
+        this.transformationParticles.children.forEach((pt, i) => {
+          const a = pt.userData.baseAngle + t * 3 * (1 + i * 0.01);
+          const r = pt.userData.baseRadius * (1 - p * 0.5);
+          pt.position.set(Math.cos(a) * r, pt.userData.baseY + Math.sin(a * 0.3) * 0.15 * p, Math.sin(a) * r);
+          pt.material.opacity = 0.3 + p * 0.6;
+        });
+      }
+      return;
+    }
+    // 阶段2：爆发 (1.5~2.5s) — 闪光球膨胀 + 纸淡出 + 粒子炸开
+    if (elapsed < 2.5) {
+      const p = (elapsed - 1.5) / 1.0;
+      this.wishPaper.material.opacity = 1 - eoc(p);
+      if (this.flashSphere) {
+        this.flashSphere.visible = true;
+        const fSub = Math.min(p, 0.5) * 2;
+        this.flashSphere.scale.setScalar(eio(fSub) * 3);
+        this.flashSphere.material.opacity = Math.max(0, 0.8 * (1 - p));
+      }
+      if (this.transformationParticles) {
+        this.transformationParticles.children.forEach(pt => {
+          const dir = pt.position.clone().normalize();
+          pt.position.addScaledVector(dir, p * 4 * 0.016);
+          pt.material.opacity = Math.max(0, 0.9 - p * 0.6);
+        });
+      }
+      return;
+    }
+    // 阶段3：揭示 (2.5~3.5s) — 千纸鹤从 0 放大显现 + 粒子消退
+    const p = eoc((elapsed - 2.5) / 1.0);
+    if (this.craneGroup) {
+      this.craneGroup.scale.setScalar(s._craneTargetScale * p);
+      this.craneGroup.traverse(ch => {
+        if (ch.material?.transparent) ch.material.opacity = p;
+      });
+    }
+    if (this.flashSphere) this.flashSphere.visible = false;
+    if (this.transformationParticles) {
+      this.transformationParticles.children.forEach(pt => { pt.material.opacity = Math.max(0, 0.4 * (1 - p)); });
     }
   }
 
-  // ═══ 折纸折叠系统：预计算 5 个阶段顶点 + 逐帧插值 ═══
-  _initFoldStages(segs) {
-    const N = segs + 1, S = 0.75, total = N * N;
-    this._foldStages = [];
-    for (let s = 0; s < 5; s++) this._foldStages.push(new Float32Array(total * 3));
-    for (let j = 0; j < N; j++) {
-      for (let i = 0; i < N; i++) {
-        const idx = (j * N + i) * 3, u = i / segs, v = j / segs;
-        const px = (u - 0.5) * S * 2, py = (v - 0.5) * S * 2;
-        for (let s = 0; s < 5; s++) {
-          const p = this._stagePos(u, v, px, py, s + 1, S);
-          this._foldStages[s][idx] = p[0];
-          this._foldStages[s][idx + 1] = p[1];
-          this._foldStages[s][idx + 2] = p[2];
+  // ─── 加载千纸鹤 GLB 模型（缓存单例，仅加载一次）───
+  _loadCraneModel() {
+    if (this.craneModel) return Promise.resolve(this.craneModel);
+    if (this._loadingModel) return this._loadingModel;
+    this._loadingModel = new Promise((resolve) => {
+      const loader = new GLTFLoader();
+      loader.load(
+        'https://cdn.jsdelivr.net/gh/code4fukui/kimoduru@main/kimoduru_tex1024.glb',
+        (gltf) => { this.craneModel = gltf.scene; this._loadingModel = null; resolve(this.craneModel); },
+        undefined,
+        () => {
+          // 加载失败 → 降级为简易纸飞机
+          const g = new THREE.Group();
+          const bm = new THREE.MeshStandardMaterial({ color: '#FFF8E7', roughness: 0.5, side: THREE.DoubleSide });
+          const body = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.7, 4), bm);
+          body.rotation.x = Math.PI / 2; g.add(body);
+          const wing = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.35), bm);
+          wing.position.y = 0.04; g.add(wing);
+          this.craneModel = g; this._loadingModel = null; resolve(g);
         }
-      }
-    }
+      );
+    });
+    return this._loadingModel;
   }
 
-  // 计算顶点在指定折叠阶段的三维位置（每阶段在上阶段基础上变形）
-  _stagePos(u, v, px, py, stage, S) {
-    // ── 阶段1：沿对角线 u=v 对折 ──
-    let bx, by, bz;
-    if (u >= v) { bx = px; by = py; bz = 0; }
-    else { bx = (v - 0.5) * S * 2; by = (u - 0.5) * S * 2; bz = (v - u) * 0.015; }
-    if (stage === 1) return [bx, by, bz];
-
-    // ── 阶段2：兔耳折 — 两个底角向上折起 ──
-    const bot2 = Math.max(0, Math.min(1, (-by / S + 1) * 0.5));
-    const sid2 = Math.min(1, Math.abs(bx) / (S * 1.05));
-    const l2 = bot2 * sid2;
-    bx *= (1 - l2 * 0.45); by += l2 * 1.1; bz += l2 * 0.55;
-    if (stage === 2) return [bx, by, bz];
-
-    // ── 阶段3：收窄身体、纵向拉伸 ──
-    bz += Math.abs(bx) * 0.18;
-    bx *= 0.4; by *= 1.15;
-    if (stage === 3) return [bx, by, bz];
-
-    // ── 阶段4：头部下弯 + 尾部后伸 ──
-    const hf = Math.max(0, Math.min(1, (by + 0.1) / (S * 1.5)));
-    const tf = Math.max(0, Math.min(1, (-by + 0.1) / (S * 1.3)));
-    by += -hf * 0.2 - tf * 0.15;
-    bz += hf * 0.4 - tf * 0.5;
-    if (stage === 4) return [bx, by, bz];
-
-    // ── 阶段5：翅膀向外展开 ──
-    const wf = Math.max(0, Math.min(1, (Math.abs(bx) - 0.06) / 0.35));
-    return [bx + wf * (bx > 0 ? 0.5 : -0.5), by + wf * (-0.15), bz + wf * 0.1];
+  // ─── 创建变身粒子（65个金/白/粉色光点，螺旋环绕）───
+  _createTransformParticles(center, baseY) {
+    if (this.transformationParticles) {
+      this.scene.remove(this.transformationParticles);
+      this.transformationParticles.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); });
+    }
+    const colors = ['#FFD700', '#FFF8DC', '#FFB6C1'];
+    this.transformationParticles = new THREE.Group();
+    for (let i = 0; i < 65; i++) {
+      const geo = new THREE.SphereGeometry(0.03, 8, 8);
+      const mat = new THREE.MeshBasicMaterial({
+        color: colors[Math.floor(Math.random() * colors.length)],
+        transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false,
+      });
+      const pt = new THREE.Mesh(geo, mat);
+      const angle = Math.random() * Math.PI * 2;
+      const radius = rand(0.8, 1.6);
+      pt.userData = { baseAngle: angle, baseRadius: radius, baseY: baseY + rand(-0.4, 0.4) };
+      pt.position.set(center.x + Math.cos(angle) * radius, pt.userData.baseY, center.z + Math.sin(angle) * radius);
+      this.transformationParticles.add(pt);
+    }
+    this.scene.add(this.transformationParticles);
   }
 
-  // 根据全局折叠进度 interpolate 顶点位置（每帧调用）
-  _updateFoldGeometry(globalProgress) {
-    const stageDefs = [
-      { start: 0.00, end: 0.20 }, // 阶段1：对角折 6.0×0.20=1.2s
-      { start: 0.20, end: 0.45 }, // 阶段2：兔耳折 6.0×0.25=1.5s
-      { start: 0.45, end: 0.65 }, // 阶段3：收窄   6.0×0.20=1.2s
-      { start: 0.65, end: 0.85 }, // 阶段4：头尾   6.0×0.20=1.2s
-      { start: 0.85, end: 1.00 }, // 阶段5：展翅   6.0×0.15=0.9s
-    ];
-    // 确定当前阶段
-    let si = 0;
-    for (let i = 0; i < stageDefs.length; i++) {
-      if (globalProgress >= stageDefs[i].start) si = i;
-    }
-    const stg = stageDefs[si];
-    const localP = globalProgress >= stg.end ? 1.0
-      : (globalProgress - stg.start) / (stg.end - stg.start);
-    // easeInOutCubic
-    const t = localP < 0.5 ? 4 * localP * localP * localP
-      : 1 - Math.pow(-2 * localP + 2, 3) / 2;
-
-    const posArr = this.wishPaper.geometry.attributes.position.array;
-
-    // 阶段0→1：顶点绕对角线物理旋转折叠
-    if (si === 0) {
-      this._updateDiagonalFold(t, posArr);
-    } else {
-      // 阶段1→5：直接插值预计算数组（缓动已提供非线性）
-      const startArr = this._foldStages[si - 1];
-      const endArr = this._foldStages[si];
-      for (let k = posArr.length - 1; k >= 0; k--) {
-        posArr[k] = startArr[k] + (endArr[k] - startArr[k]) * t;
-      }
-    }
-
-    this.wishPaper.geometry.attributes.position.needsUpdate = true;
-    this.wishPaper.geometry.computeVertexNormals();
-    // 同步更新折痕边线
-    if (this._foldEdgeLine) {
-      this._foldEdgeLine.geometry.dispose();
-      this._foldEdgeLine.geometry = new THREE.EdgesGeometry(this.wishPaper.geometry, 20);
-    }
-  }
-
-  // 阶段0→1：顶点绕对角线旋转（模拟真实纸张翻折，角速度 π rad）
-  _updateDiagonalFold(t, posArr) {
-    const segs = 16, N = segs + 1, S = 0.75;
-    const theta = t * Math.PI; // 旋转角 0→180°
-    const cosT = Math.cos(theta), sinT = Math.sin(theta);
-    for (let j = 0; j < N; j++) {
-      for (let i = 0; i < N; i++) {
-        const idx = (j * N + i) * 3;
-        const u = i / segs, v = j / segs;
-        const px = (u - 0.5) * S * 2, py = (v - 0.5) * S * 2;
-        if (u >= v) {
-          // 对角线下方：保持不动
-          posArr[idx] = px; posArr[idx + 1] = py; posArr[idx + 2] = 0;
-        } else {
-          // 对角线上方：绕对角线轴 (1,1,0)/√2 旋转 theta
-          const dAlong = (px + py) / Math.SQRT2;
-          const dPerp = (py - px) / Math.SQRT2; // > 0 在对角线上方
-          const dPerpRot = dPerp * cosT;
-          const zRot = dPerp * sinT;
-          posArr[idx] = (dAlong - dPerpRot) / Math.SQRT2;
-          posArr[idx + 1] = (dAlong + dPerpRot) / Math.SQRT2;
-          posArr[idx + 2] = zRot + (v - u) * 0.008 * (1 - cosT);
-        }
-      }
-    }
-  }
-
-  // ─── foldToCrane：启动顶点折叠动画 ───
+  // ─── foldToCrane：启动魔法变身，返回 Promise ───
   foldToCrane() {
     return new Promise((resolve) => {
       if (!this.wishPaper) { resolve(); return; }
       const s = this.paperAnimState;
-      // 开始 6 秒顶点折叠动画
-      s.phase = 'folding'; s.startTime = performance.now() / 1000; s.foldProgress = 0;
-      const check = () => {
-        if (s.phase === 'folded') {
-          // 折叠完成后停留 2 秒供欣赏，再起飞
-          setTimeout(() => { this._startCraneAnimation(resolve); }, 2000);
-          return;
+      const paperPos = this.wishPaper.position.clone();
+      const paperY = paperPos.y;
+      s._resolve = resolve;
+      this._loadCraneModel().then(() => {
+        // 克隆千纸鹤模型，定位到纸张位置
+        if (this.craneModel) {
+          this.craneGroup = this.craneModel.clone(true);
+          this.craneGroup.position.copy(paperPos);
+          this.craneGroup.rotation.set(0, 0, 0);
+          this.craneGroup.scale.setScalar(0);
+          // 自动计算目标缩放：翼展约 1.8 单位
+          const box = new THREE.Box3().setFromObject(this.craneGroup);
+          const size = new THREE.Vector3(); box.getSize(size);
+          const maxDim = Math.max(size.x, size.y, size.z);
+          s._craneTargetScale = maxDim > 0 ? 1.8 / maxDim : 1.5;
+          // 金色发光
+          this.craneGroup.traverse(ch => {
+            if (ch.material) {
+              const mats = Array.isArray(ch.material) ? ch.material : [ch.material];
+              mats.forEach(m => {
+                m.emissive = new THREE.Color('#FFD700');
+                m.emissiveIntensity = 0.25;
+                m.transparent = true; m.opacity = 0;
+              });
+            }
+          });
+          this.scene.add(this.craneGroup);
         }
-        if (s.phase !== 'flying') requestAnimationFrame(check);
-      };
-      setTimeout(check, 100);
+        // 变身粒子 + 闪光球
+        this._createTransformParticles(paperPos, paperY);
+        const fGeo = new THREE.SphereGeometry(2, 32, 32);
+        const fMat = new THREE.MeshBasicMaterial({
+          color: '#FFFFFF', transparent: true, opacity: 0,
+          blending: THREE.AdditiveBlending, depthWrite: false,
+        });
+        this.flashSphere = new THREE.Mesh(fGeo, fMat);
+        this.flashSphere.position.copy(paperPos);
+        this.flashSphere.scale.setScalar(0);
+        this.flashSphere.visible = false;
+        this.scene.add(this.flashSphere);
+        // 启动动画
+        s.phase = 'transforming';
+        s.startTime = performance.now() / 1000;
+      });
     });
   }
 
-  // ─── 千纸鹤飞行启动（折叠几何体直接起飞）───
-  _startCraneAnimation(resolve) {
-    const s = this.paperAnimState;
-    s.flyPath = {
-      start: this.wishPaper.position.clone(),
-      cp1: new THREE.Vector3(1.0, 3.5, 1.0),
-      cp2: new THREE.Vector3(2.0, 5.5, -1.5),
-      end: new THREE.Vector3(3.5, 7.5, -4.5),
-    };
-    s.camTargetOrig = this.controls.target.clone();
-    s.phase = 'flying';
-    s.startTime = performance.now() / 1000;
-    s.flyProgress = 0;
-    s.flyResolve = resolve;
-  }
-
-  // ─── 千纸鹤飞行动画（折叠几何体直接飞，顶点级翅膀扑动）───
+  // ─── 千纸鹤悬停 & 飞行（GLB 模型）───
   _animCrane(t) {
-    if (!this.wishPaper || !this.paperAnimState || this.paperAnimState.phase !== 'flying') return;
+    if (!this.craneGroup || !this.paperAnimState) return;
     const s = this.paperAnimState;
-    const elapsed = t - s.startTime;
-    s.flyProgress = Math.min(elapsed / 5.0, 1.0);
-    const fp = eio(s.flyProgress);
-
-    // 沿贝塞尔曲线移动
-    const pos = bezier(fp, s.flyPath.start, s.flyPath.cp1, s.flyPath.cp2, s.flyPath.end);
-    this.wishPaper.position.copy(pos);
-
-    // 逐渐缩小
-    const scale = 1.0 - fp * 0.95;
-    this.wishPaper.scale.setScalar(scale);
-
-    // 面朝飞行方向
-    const nextFp = Math.min(fp + 0.03, 1.0);
-    const lookTarget = bezier(nextFp, s.flyPath.start, s.flyPath.cp1, s.flyPath.cp2, s.flyPath.end);
-    this.wishPaper.lookAt(lookTarget);
-    this.wishPaper.rotateZ(Math.sin(fp * Math.PI * 0.7) * 0.25);
-
-    // 翅膀顶点扑动
-    this._applyWingFlap(Math.sin(elapsed * Math.PI * 2 * 3.5) * 0.15);
-
-    // 相机跟随
-    if (s.camTargetOrig && fp < 0.8) {
-      this.controls.target.y = s.camTargetOrig.y + fp * 1.2;
-    }
-
-    // 末尾淡出
-    if (fp > 0.8) {
-      const fadeOut = 1.0 - (fp - 0.8) / 0.2;
-      this.wishPaper.material.transparent = true;
-      this.wishPaper.material.opacity = Math.max(0, fadeOut);
-      if (this._foldEdgeLine) {
-        this._foldEdgeLine.material.opacity = Math.max(0, 0.4 * fadeOut);
+    // 悬停（变身完成后静置 2s，温柔浮动）
+    if (s.phase === 'pausing') {
+      const baseY = s._craneBaseY ?? (s._craneBaseY = this.craneGroup.position.y);
+      this.craneGroup.position.y = baseY + Math.sin(t * 1.5) * 0.06;
+      this.craneGroup.rotation.z = Math.sin(t * 0.6) * 0.04;
+      if (t - s.startTime >= 2.0) {
+        s.phase = 'flying'; s.startTime = t;
+        const cp = this.craneGroup.position.clone();
+        s.flyPath = {
+          start: cp.clone(),
+          cp1: new THREE.Vector3(cp.x + 1.2, cp.y + 2.5, cp.z + 1.2),
+          cp2: new THREE.Vector3(cp.x + 2.5, cp.y + 4.5, cp.z - 1.8),
+          end: new THREE.Vector3(cp.x + 4.5, cp.y + 7.0, cp.z - 5.5),
+        };
       }
+      return;
     }
-
-    // 飞行结束，清理资源
-    if (s.flyProgress >= 1.0) {
-      this.scene.remove(this.wishPaper);
-      this.wishPaper.geometry.dispose();
-      this.wishPaper.material.dispose();
-      if (this._foldEdgeLine) { this._foldEdgeLine.geometry.dispose(); this._foldEdgeLine.material.dispose(); }
-      this.wishPaper = null;
-      this._foldEdgeLine = null;
-      this._foldStages = null;
-      this._foldBaseVerts = null;
-      if (s.camTargetOrig) this.controls.target.copy(s.camTargetOrig);
-      if (s.flyResolve) s.flyResolve();
-      s.flyResolve = null;
+    if (s.phase !== 'flying') return;
+    // 飞行 (5s 贝塞尔路径)
+    const elapsed = t - s.startTime;
+    const fp = Math.min(elapsed / 5.0, 1.0);
+    const ep = eio(fp);
+    const pos = bezier(ep, s.flyPath.start, s.flyPath.cp1, s.flyPath.cp2, s.flyPath.end);
+    this.craneGroup.position.copy(pos);
+    // 面朝飞行方向 + 微妙倾斜（无翅膀扑动，纸鹤是折纸模型）
+    const nEp = Math.min(ep + 0.02, 1.0);
+    const lookPt = bezier(nEp, s.flyPath.start, s.flyPath.cp1, s.flyPath.cp2, s.flyPath.end);
+    this.craneGroup.lookAt(lookPt);
+    this.craneGroup.rotation.z = Math.sin(fp * Math.PI * 0.7) * 0.25;
+    // 逐渐缩小
+    const ts = s._craneTargetScale || 1.5;
+    this.craneGroup.scale.setScalar(ts * (1 - fp * 0.9));
+    // 末尾 20% 淡出
+    if (fp > 0.8) {
+      const fade = 1 - (fp - 0.8) / 0.2;
+      this.craneGroup.traverse(ch => {
+        if (ch.material?.transparent) ch.material.opacity = Math.max(0, fade);
+      });
+    }
+    // 完成清理
+    if (fp >= 1.0) {
+      this._cleanupCraneAndParticles();
       s.phase = 'done';
+      if (s._resolve) { s._resolve(); s._resolve = null; }
     }
   }
 
-  // 飞行时翅膀顶点扑动：从阶段5静止姿态出发，绕 Z 轴旋转翅膀区域顶点
-  _applyWingFlap(angle) {
-    if (!this.wishPaper || !this._foldStages || this._foldStages.length < 5) return;
-    const posArr = this.wishPaper.geometry.attributes.position.array;
-    const stage5 = this._foldStages[4]; // 展翅静止姿态（阶段5）
-    // 先恢复全部顶点到阶段5静止姿态
-    posArr.set(stage5);
-    // 再对翅膀区域顶点施加旋转
-    for (let k = 0; k < posArr.length; k += 3) {
-      const sx = stage5[k];
-      const wf = Math.max(0, Math.min(1, (Math.abs(sx) - 0.08) / 0.3));
-      if (wf <= 0) continue;
-      const sign = sx > 0 ? 1 : -1;
-      const a = angle * wf * sign;
-      const ca = Math.cos(a), sa = Math.sin(a);
-      const sy = stage5[k + 1], sz = stage5[k + 2];
-      posArr[k] = sx * ca - sy * sa;
-      posArr[k + 1] = sx * sa + sy * ca;
-      posArr[k + 2] = sz;
-    }
-    this.wishPaper.geometry.attributes.position.needsUpdate = true;
-    this.wishPaper.geometry.computeVertexNormals();
+  // 清理千纸鹤、粒子、闪光球
+  _cleanupCraneAndParticles() {
+    [this.craneGroup, this.transformationParticles, this.flashSphere].forEach(obj => {
+      if (!obj) return;
+      this.scene.remove(obj);
+      obj.traverse(ch => { if (ch.geometry) ch.geometry.dispose(); if (ch.material) (Array.isArray(ch.material) ? ch.material : [ch.material]).forEach(m => m.dispose()); });
+    });
+    this.craneGroup = null;
+    this.transformationParticles = null;
+    this.flashSphere = null;
   }
 
   // ─── blowCandles ───
@@ -907,10 +879,15 @@ export class CakeScene {
       });
       this._starLayers = null;
     }
-    if (this.craneGroup) {
-      this.scene?.remove(this.craneGroup);
-      this.craneGroup.traverse(ch => { if (ch.geometry) ch.geometry.dispose(); if (ch.material) (Array.isArray(ch.material) ? ch.material : [ch.material]).forEach(m => m.dispose()); });
+    // 清理许愿纸（如未在动画中清理）
+    if (this.wishPaper) {
+      this.scene?.remove(this.wishPaper);
+      if (this.wishPaper.geometry) this.wishPaper.geometry.dispose();
+      if (this.wishPaper.material) this.wishPaper.material.dispose();
+      this.wishPaper = null;
     }
+    // 清理千纸鹤、粒子、闪光球（统一清理函数）
+    this._cleanupCraneAndParticles?.();
     if (this.scene) {
       this.scene.traverse(ch => { if (ch.geometry && ch !== this.scene) ch.geometry.dispose(); if (ch.material) (Array.isArray(ch.material) ? ch.material : [ch.material]).forEach(m => m.dispose()); });
       this.scene.clear();
@@ -918,6 +895,8 @@ export class CakeScene {
     this.renderer?.dispose();
     if (this.container && this.renderer?.domElement?.parentElement === this.container) this.container.removeChild(this.renderer.domElement);
     this.controls?.dispose();
-    Object.assign(this, { scene: null, camera: null, renderer: null, controls: null, flameGroup: [], confettiParticles: [], wishPaper: null, craneGroup: null, stars: null });
+    Object.assign(this, { scene: null, camera: null, renderer: null, controls: null, flameGroup: [],
+      confettiParticles: [], wishPaper: null, paperAnimState: null,
+      craneGroup: null, craneModel: null, transformationParticles: null, flashSphere: null });
   }
 }
