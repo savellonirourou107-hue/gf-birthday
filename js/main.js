@@ -36,7 +36,7 @@ let hasTypedInitialMessage = false;
 function showRandomMessage() {
     const randomIndex = Math.floor(Math.random() * loveMessages.length);
     messageElement.classList.add('visible');
-    typeWriter(messageElement, loveMessages[randomIndex], 107);
+    typeWriter(messageElement, loveMessages[randomIndex], 214);
 }
 
 // 初始化背景粒子
@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // 添加打字机效果
-function typeWriter(element, text, speed = 107) {
+function typeWriter(element, text, speed = 214) {
     clearTimeout(typeTimer);
     let i = 0;
     element.textContent = '';
@@ -679,7 +679,7 @@ const longLetter = document.getElementById('long-letter');
 const letterBody = document.getElementById('letter-body');
 const letterSign = document.getElementById('letter-sign');
 const letterSignDate = document.querySelector('.letter-sign-date');
-const LETTER_TYPE_SPEED = 28;
+const LETTER_TYPE_SPEED = 56;
 let letterTyped = false;
 
 function typeLetter(text, element, speed = LETTER_TYPE_SPEED) {
