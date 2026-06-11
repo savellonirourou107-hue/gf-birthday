@@ -213,22 +213,78 @@ export class CakeScene {
   }
 
   _spawnShootingStar() {
-    const ph = rand(0.3, 0.8), th = Math.random() * Math.PI * 2, r = 15;
-    const sx = Math.sin(ph) * Math.cos(th) * r, sy = Math.sin(ph) * Math.sin(th) * r, sz = Math.cos(ph) * r;
-    const d = new THREE.Vector3(rand(0.5, 1), rand(-0.3, -0.1), rand(-0.2, 0.2)).normalize();
-    const p1 = new THREE.Vector3(sx, sy, sz);
-    const line = new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints([p1, p1.clone().add(d.clone().multiplyScalar(1.5))]),
-      new THREE.LineBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.9,
-        blending: THREE.AdditiveBlending, depthWrite: false }));
-    this.scene.add(line);
-    this.shootingStars.push({ mesh: line, dir: d, speed: rand(3, 6), life: 0, maxLife: rand(1.2, 2.0), start: p1 });
+    // 随机半球方向：流星从上方区域划过
+    const ph = rand(0.2, 0.7), th = Math.random() * Math.PI * 2, r = 14 + Math.random() * 4;
+    const sx = Math.cos(ph) * Math.sin(th) * r;
+    const sy = Math.sin(ph) * r + 3;
+    const sz = Math.cos(ph) * Math.cos(th) * r;
+    const head = new THREE.Vector3(sx, sy, sz);
+    // 方向：带轻微弧度，向右下方或左下方划过
+    const d = new THREE.Vector3(rand(0.4, 1.2), rand(-0.6, -0.15), rand(-0.3, 0.3)).normalize();
+    const speed = rand(4, 8);
+    const maxLife = rand(1.5, 2.5);
+    const trailLen = rand(1.8, 3.2);
+
+    // ── 拖尾：构建多段线 (8 个点) ──
+    const trailPts = [];
+    for (let j = 7; j >= 0; j--) {
+      trailPts.push(head.clone().addScaledVector(d, -j * trailLen / 7));
+    }
+    const trailGeo = new THREE.BufferGeometry().setFromPoints(trailPts);
+    const trailMat = new THREE.LineBasicMaterial({
+      color: '#ffffff',
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      linewidth: 1,
+    });
+    const trailLine = new THREE.Line(trailGeo, trailMat);
+    this.scene.add(trailLine);
+
+    // ── 头部光晕球 ──
+    const glowGeo = new THREE.SphereGeometry(0.06, 8, 8);
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: '#fff8e0',
+      transparent: true,
+      opacity: 0.95,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+    glow.position.copy(head);
+    this.scene.add(glow);
+
+    // ── 尾部火花粒子 (3-5 个) ──
+    const sparkles = [];
+    const sparkCount = Math.floor(rand(3, 6));
+    for (let j = 0; j < sparkCount; j++) {
+      const sGeo = new THREE.SphereGeometry(0.02, 4, 4);
+      const sMat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color().setHSL(0.13, 1, rand(0.6, 1)),
+        transparent: true,
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      const sMesh = new THREE.Mesh(sGeo, sMat);
+      sMesh.position.copy(head).addScaledVector(d, -rand(0.3, 2.5))
+        .add(new THREE.Vector3(rand(-0.15, 0.15), rand(-0.15, 0.15), rand(-0.15, 0.15)));
+      sMesh.userData = { offset: new THREE.Vector3(rand(-0.2, 0.2), rand(-0.2, 0.2), rand(-0.2, 0.2)), life: rand(0.2, 0.8) };
+      this.scene.add(sMesh);
+      sparkles.push(sMesh);
+    }
+
+    this.shootingStars.push({
+      head, dir: d, speed, life: 0, maxLife,
+      trailLine, trailLen, glow, sparkles,
+    });
   }
 
   // ─── start ───
   start() {
     if (this.animId !== null) return;
-    this.nextShootingStar = performance.now() / 1000 + rand(3, 8);
+    this.nextShootingStar = performance.now() / 1000 + rand(0.5, 1.5);
     const loop = () => {
       this.animId = requestAnimationFrame(loop);
       const dt = Math.min(this.clock.getDelta(), 0.1);
@@ -258,18 +314,46 @@ export class CakeScene {
 
   _animStars(t, dt) {
     if (this.stars) this.stars.material.opacity = 0.85 + Math.sin(t * 1.5) * 0.05 + Math.sin(t * 3.7) * 0.03;
-    if (t >= this.nextShootingStar) { this._spawnShootingStar(); this.nextShootingStar = t + rand(3, 8); }
+    // 流星出现频率：每 1~2.5 秒一颗，最多同时 4 颗
+    if (t >= this.nextShootingStar) {
+      this._spawnShootingStar();
+      this.nextShootingStar = t + rand(1.0, 2.5);
+    }
     for (let i = this.shootingStars.length - 1; i >= 0; i--) {
       const s = this.shootingStars[i]; s.life += dt; const p = s.life / s.maxLife;
       if (p >= 1) {
-        this.scene.remove(s.mesh); s.mesh.geometry.dispose(); s.mesh.material.dispose();
+        // 清理流星
+        this.scene.remove(s.trailLine); s.trailLine.geometry.dispose(); s.trailLine.material.dispose();
+        this.scene.remove(s.glow); s.glow.geometry.dispose(); s.glow.material.dispose();
+        s.sparkles.forEach(sp => {
+          this.scene.remove(sp); sp.geometry.dispose(); sp.material.dispose();
+        });
         this.shootingStars.splice(i, 1); continue;
       }
-      s.start.add(s.dir.clone().multiplyScalar(s.speed * dt));
-      s.mesh.geometry.dispose();
-      s.mesh.geometry = new THREE.BufferGeometry().setFromPoints([
-        s.start, s.start.clone().add(s.dir.clone().multiplyScalar(1.5))]);
-      s.mesh.material.opacity = (p < 0.1 ? p / 0.1 : 1 - (p - 0.1) / 0.9) * 0.9;
+      // 移动头部
+      s.head.addScaledVector(s.dir, s.speed * dt);
+      s.glow.position.copy(s.head);
+      // 更新拖尾：从头部向后排列
+      const tp = [];
+      for (let j = 7; j >= 0; j--) {
+        tp.push(s.head.clone().addScaledVector(s.dir, -j * s.trailLen / 7));
+      }
+      s.trailLine.geometry.dispose();
+      s.trailLine.geometry = new THREE.BufferGeometry().setFromPoints(tp);
+      // 淡入淡出
+      s.trailLine.material.opacity = (p < 0.15 ? p / 0.15 : 1 - (p - 0.15) / 0.85) * 0.85;
+      s.glow.material.opacity = (p < 0.15 ? p / 0.15 : 1 - (p - 0.15) / 0.85) * 0.95;
+      // 移动火花
+      s.sparkles.forEach(sp => {
+        const spLife = sp.userData.life + dt;
+        sp.userData.life = spLife;
+        if (spLife > 1) {
+          sp.userData.life = 0;
+          sp.position.copy(s.head).addScaledVector(s.dir, -rand(0.3, 2.5))
+            .add(new THREE.Vector3(rand(-0.2, 0.2), rand(-0.2, 0.2), rand(-0.2, 0.2)));
+        }
+        sp.material.opacity = Math.max(0, sp.userData.life < 0.3 ? sp.userData.life / 0.3 : 1 - (sp.userData.life - 0.3) / 0.7) * 0.8;
+      });
     }
   }
 
@@ -635,7 +719,11 @@ export class CakeScene {
   // ─── dispose ───
   dispose() {
     if (this.animId !== null) { cancelAnimationFrame(this.animId); this.animId = null; }
-    this.shootingStars.forEach(s => { this.scene?.remove(s.mesh); s.mesh.geometry.dispose(); s.mesh.material.dispose(); });
+    this.shootingStars.forEach(s => {
+      this.scene?.remove(s.trailLine); s.trailLine.geometry.dispose(); s.trailLine.material.dispose();
+      this.scene?.remove(s.glow); s.glow.geometry.dispose(); s.glow.material.dispose();
+      s.sparkles.forEach(sp => { this.scene?.remove(sp); sp.geometry.dispose(); sp.material.dispose(); });
+    });
     this.shootingStars = [];
     this.confettiParticles.forEach(c => { this.scene?.remove(c); c.geometry.dispose(); c.material.dispose(); });
     this.confettiParticles = [];
