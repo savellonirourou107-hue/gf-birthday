@@ -39,7 +39,8 @@ export class CakeScene {
     this.wishPaperBaseVerts = null;
     this.paperAnimState = null;
     this.craneGroup = null;
-    this.craneParts = [];
+    this.craneAll = [];
+    this.craneWings = null;
     this.confettiParticles = [];
     this.container = null;
   }
@@ -294,39 +295,133 @@ export class CakeScene {
       this.wishPaper.rotation.z = Math.sin(t * 0.7) * 0.05;
     }
     if (s.phase === 'folding') {
-      s.foldProgress = Math.min((t - s.startTime) / 1.5, 1.0);
-      this._applyFold(s.foldProgress);
+      // 折叠持续 4.0 秒，纸张淡出，千纸鹤同步淡入
+      const elapsed = t - s.startTime;
+      s.foldProgress = Math.min(elapsed / 4.0, 1.0);
+      if (this.wishPaper.material.opacity !== undefined) {
+        this.wishPaper.material.transparent = true;
+        this.wishPaper.material.opacity = 1.0 - s.foldProgress;
+      }
+      // 千纸鹤同步淡入（加速曲线，让造型快速显现）
+      if (this.craneAll && this.craneAll.length) {
+        const craneOpacity = eoc(s.foldProgress) * 0.95;
+        this.craneAll.forEach(m => { m.material.opacity = craneOpacity; });
+      }
       if (s.foldProgress >= 1.0) { s.phase = 'folded'; s.startTime = t; }
     }
   }
 
-  _applyFold(progress) {
-    if (!this.wishPaper) return;
-    const pos = this.wishPaper.geometry.attributes.position;
-    const base = this.wishPaperBaseVerts, arr = pos.array;
-    const cols = 7, rows = 9, hw = 0.75, hh = 1.0;
+  // ─── 构建折纸千纸鹤模型 ───
+  _buildOrigamiCrane() {
+    const group = new THREE.Group();
+    const allMeshes = [];
 
-    const p1 = Math.min(progress / 0.33, 1), p2 = Math.min(Math.max((progress - 0.33) / 0.33, 0), 1),
-      p3 = Math.min(Math.max((progress - 0.66) / 0.34, 0), 1);
-    const e1 = eio(p1), e2 = eio(p2), e3 = eoc(p3);
+    // 纸张材质：暖白、微粗糙、带暗光
+    const mat = new THREE.MeshStandardMaterial({
+      color: '#FFF8E7',
+      roughness: 0.5,
+      metalness: 0.02,
+      side: THREE.DoubleSide,
+      emissive: '#FFF8E7',
+      emissiveIntensity: 0.1,
+      transparent: true,
+      opacity: 0.95,
+    });
 
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const nx = c / (cols - 1) * 2 - 1, ny = r / (rows - 1) * 2 - 1;
-        const cf = Math.abs(nx) * Math.abs(ny);
-        let x = nx * hw * (1 - e1 * cf * 0.8);
-        let y = ny * hh * (1 - e1 * cf * 0.8);
-        const df = (Math.abs(nx) + Math.abs(ny)) / 2;
-        y += e2 * df * 0.6 * Math.abs(x / hw);
-        const wf = Math.abs(nx), ef = Math.abs(ny);
-        const z = e3 * wf * (1 - ef) * 0.4 * Math.sign(nx);
-        y += e3 * ef * (1 - wf) * 0.5 * Math.sign(ny) - e3 * (1 - wf) * (1 - ef) * 0.1;
-        const i = (r * cols + c) * 3;
-        arr[i] = x; arr[i + 1] = y; arr[i + 2] = z;
-      }
-    }
-    pos.needsUpdate = true;
-    this.wishPaper.geometry.computeVertexNormals();
+    // 折痕线材质
+    const lineMat = new THREE.LineBasicMaterial({
+      color: '#c8b898',
+      transparent: true,
+      opacity: 0.35,
+      depthTest: true,
+    });
+
+    // 辅助：创建一个三角面 + 折痕边线
+    const makeTri = (v1, v2, v3, parent) => {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+        v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z,
+      ]), 3));
+      geo.computeVertexNormals();
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.castShadow = true;
+      mesh.renderOrder = 0;
+      // 折痕边线
+      const edges = new THREE.EdgesGeometry(geo, 15);
+      const line = new THREE.LineSegments(edges, lineMat);
+      line.renderOrder = 1;
+      mesh.add(line);
+      parent.add(mesh);
+      allMeshes.push(mesh);
+      return mesh;
+    };
+
+    // ── 身体顶点 ──
+    const ct = new THREE.Vector3(0, 0.2, 0);       // 中心脊线上端
+    const cb = new THREE.Vector3(0, -0.15, 0);     // 中心脊线下端
+    const fr = new THREE.Vector3(0, -0.05, 0.3);   // 前（颈部连接处）
+    const bk = new THREE.Vector3(0, -0.05, -0.35); // 后（尾部连接处）
+    const lt = new THREE.Vector3(-0.25, -0.05, 0); // 左
+    const rt = new THREE.Vector3(0.25, -0.05, 0);  // 右
+
+    // ── 身体子组 ──
+    const bodyGroup = new THREE.Group();
+    // 右侧身体面
+    makeTri(ct, fr, rt, bodyGroup);
+    makeTri(cb, fr, rt, bodyGroup);
+    makeTri(ct, rt, bk, bodyGroup);
+    makeTri(cb, rt, bk, bodyGroup);
+    // 左侧身体面
+    makeTri(ct, lt, fr, bodyGroup);
+    makeTri(cb, lt, fr, bodyGroup);
+    makeTri(ct, bk, lt, bodyGroup);
+    makeTri(cb, bk, lt, bodyGroup);
+
+    // ── 左翅膀子组（枢轴在身体左侧） ──
+    const leftWingGroup = new THREE.Group();
+    leftWingGroup.position.copy(lt);
+    const lwTip = new THREE.Vector3(-0.3, 0.6, 0.05);   // 翼尖：左上方
+    const lwBack = new THREE.Vector3(0.15, -0.05, -0.2); // 翼后缘
+    makeTri(new THREE.Vector3(0, 0, 0), lwTip, lwBack, leftWingGroup);
+
+    // ── 右翅膀子组（枢轴在身体右侧） ──
+    const rightWingGroup = new THREE.Group();
+    rightWingGroup.position.copy(rt);
+    const rwTip = new THREE.Vector3(0.3, 0.6, 0.05);    // 翼尖：右上方
+    const rwBack = new THREE.Vector3(-0.15, -0.05, -0.2); // 翼后缘
+    makeTri(new THREE.Vector3(0, 0, 0), rwTip, rwBack, rightWingGroup);
+
+    // ── 颈部子组（枢轴在身体前方） ──
+    const neckGroup = new THREE.Group();
+    neckGroup.position.copy(fr);
+    const nkMid = new THREE.Vector3(0, 0.12, 0.18);  // 颈中部
+    const nkTip = new THREE.Vector3(0, 0.18, 0.32);  // 颈尖（头顶折点）
+    makeTri(new THREE.Vector3(0, 0, 0), nkMid, nkTip, neckGroup);
+    // 头部小折角（从颈尖向前下折）
+    const hdTip = new THREE.Vector3(0, 0.1, 0.4);    // 头尖
+    makeTri(nkTip, hdTip, nkMid, neckGroup);
+
+    // ── 尾部子组（枢轴在身体后方） ──
+    const tailGroup = new THREE.Group();
+    tailGroup.position.copy(bk);
+    const tlTip = new THREE.Vector3(0, 0.1, -0.32);  // 尾尖：后上方
+    const tlBase = new THREE.Vector3(0.03, -0.05, 0); // 尾根微宽
+    makeTri(new THREE.Vector3(0, 0, 0), tlTip, tlBase, tailGroup);
+
+    // ── 组装 ──
+    group.add(bodyGroup);
+    group.add(leftWingGroup);
+    group.add(rightWingGroup);
+    group.add(neckGroup);
+    group.add(tailGroup);
+
+    // 翅膀初始旋转（向上展开约 30°）
+    leftWingGroup.rotation.z = -0.3;
+    rightWingGroup.rotation.z = 0.3;
+
+    this.craneGroup = group;
+    this.craneAll = allMeshes;
+    this.craneWings = { left: leftWingGroup, right: rightWingGroup };
   }
 
   // ─── foldToCrane ───
@@ -334,64 +429,109 @@ export class CakeScene {
     return new Promise((resolve) => {
       if (!this.wishPaper) { resolve(); return; }
       const s = this.paperAnimState;
+      // 构建千纸鹤模型
+      this._buildOrigamiCrane();
+      // 将千纸鹤放在纸张位置
+      this.craneGroup.position.copy(this.wishPaper.position);
+      this.craneGroup.rotation.copy(this.wishPaper.rotation);
+      // 初始不可见
+      this.craneAll.forEach(m => { m.material.opacity = 0; });
+      this.scene.add(this.craneGroup);
+      // 开始折叠过渡（纸张淡出 + 千纸鹤淡入）
       s.phase = 'folding'; s.startTime = performance.now() / 1000; s.foldProgress = 0;
       const check = () => {
-        if (s.phase === 'folded') { this._craneFly(resolve); return; }
+        if (s.phase === 'folded') {
+          // 千纸鹤完成后停留 1.5 秒，让用户看清楚
+          setTimeout(() => { this._startCraneAnimation(resolve); }, 1500);
+          return;
+        }
         if (s.phase !== 'flying') requestAnimationFrame(check);
       };
       setTimeout(check, 100);
     });
   }
 
-  _craneFly(resolve) {
-    if (!this.wishPaper) { resolve(); return; }
-    const s = this.paperAnimState, paper = this.wishPaper;
-    this.craneGroup = new THREE.Group();
-    this.craneGroup.position.copy(paper.position);
-    this.craneGroup.rotation.copy(paper.rotation);
-    this.scene.remove(paper);
-    paper.position.set(0, 0, 0); paper.rotation.set(0, 0, 0);
-    this.craneGroup.add(paper);
-    this.scene.add(this.craneGroup);
+  // ─── 千纸鹤飞行启动 ───
+  _startCraneAnimation(resolve) {
+    // 移除已不可见的纸张
+    if (this.wishPaper) {
+      this.scene.remove(this.wishPaper);
+      this.wishPaper.geometry.dispose();
+      this.wishPaper.material.dispose();
+      this.wishPaper = null;
+    }
 
-    const wGeo = new THREE.ConeGeometry(0.3, 0.9, 4, 1);
-    const wMat = new THREE.MeshStandardMaterial({ color: '#FFF8E7', roughness: 0.6, metalness: 0.02, side: THREE.DoubleSide });
-    [{ pos: [-0.35, 0, 0], rz: Math.PI / 4, ry: -0.3, side: 'left' },
-     { pos: [0.35, 0, 0], rz: -Math.PI / 4, ry: 0.3, side: 'right' }].forEach(cfg => {
-      const wing = new THREE.Mesh(wGeo, wMat);
-      wing.position.set(...cfg.pos);
-      wing.rotation.z = cfg.rz; wing.rotation.y = cfg.ry;
-      this.craneGroup.add(wing);
-      this.craneParts.push({ mesh: wing, side: cfg.side });
-    });
+    const s = this.paperAnimState;
+    const crane = this.craneGroup;
 
-    s.phase = 'flying'; s.startTime = performance.now() / 1000; s.flyProgress = 0;
+    // 贝塞尔飞行路径：当前位置 → 右上弧线 → 略回左 → 上升飞远
     s.flyPath = {
-      start: this.craneGroup.position.clone(),
-      cp1: new THREE.Vector3(1.5, 4, 1), cp2: new THREE.Vector3(2.5, 6, -2),
-      end: new THREE.Vector3(3, 8, -5) };
+      start: crane.position.clone(),
+      cp1: new THREE.Vector3(1.0, 3.5, 1.0),
+      cp2: new THREE.Vector3(2.0, 5.5, -1.5),
+      end: new THREE.Vector3(3.5, 7.5, -4.5),
+    };
+
+    // 保存相机初始状态用于飞行时微调
+    s.camTargetOrig = this.controls.target.clone();
+
+    s.phase = 'flying';
+    s.startTime = performance.now() / 1000;
+    s.flyProgress = 0;
     s.flyResolve = resolve;
   }
 
+  // ─── 千纸鹤飞行动画 ───
   _animCrane(t) {
     if (!this.craneGroup || !this.paperAnimState || this.paperAnimState.phase !== 'flying') return;
     const s = this.paperAnimState;
-    s.flyProgress = Math.min((t - s.startTime) / 2.0, 1.0);
+    const elapsed = t - s.startTime;
+    s.flyProgress = Math.min(elapsed / 5.0, 1.0);
     const fp = eio(s.flyProgress);
-    this.craneGroup.position.copy(bezier(fp, s.flyPath.start, s.flyPath.cp1, s.flyPath.cp2, s.flyPath.end));
-    this.craneGroup.scale.setScalar(1 - fp * 0.9);
-    this.craneGroup.rotation.y += 0.01;
-    this.craneGroup.rotation.z = Math.sin(fp * Math.PI) * 0.3;
-    const wf = Math.sin((t - s.startTime) * 12) * 0.5;
-    this.craneParts.forEach(p => {
-      const sign = p.side === 'left' ? 1 : -1;
-      p.mesh.rotation.z = sign * (Math.PI / 4 + wf);
-      p.mesh.rotation.x = wf * 0.3;
-    });
+
+    // 位置：沿贝塞尔曲线移动
+    const pos = bezier(fp, s.flyPath.start, s.flyPath.cp1, s.flyPath.cp2, s.flyPath.end);
+    this.craneGroup.position.copy(pos);
+
+    // 缩放：逐渐变小，最终缩到 0.05
+    const scale = 1.0 - fp * 0.95;
+    this.craneGroup.scale.setScalar(scale);
+
+    // 朝向：始终面朝飞行方向
+    const nextFp = Math.min(fp + 0.03, 1.0);
+    const lookTarget = bezier(nextFp, s.flyPath.start, s.flyPath.cp1, s.flyPath.cp2, s.flyPath.end);
+    this.craneGroup.lookAt(lookTarget);
+
+    // 轻微横滚（转弯时倾斜）
+    this.craneGroup.rotateZ(Math.sin(fp * Math.PI * 0.7) * 0.25);
+
+    // 翅膀柔和扑动：幅度约 0.18，频率约 3.5 Hz
+    const wingAngle = Math.sin(elapsed * Math.PI * 2 * 3.5) * 0.18;
+    if (this.craneWings) {
+      this.craneWings.left.rotation.z = -0.3 + wingAngle;
+      this.craneWings.right.rotation.z = 0.3 - wingAngle;
+    }
+
+    // 相机微妙跟随：千纸鹤上升时 camera target 略上移
+    if (s.camTargetOrig && fp < 0.8) {
+      this.controls.target.y = s.camTargetOrig.y + fp * 1.2;
+    }
+
+    // 最后阶段千纸鹤淡出
+    if (fp > 0.8) {
+      const fadeOut = 1.0 - (fp - 0.8) / 0.2;
+      const opacity = Math.max(0, 0.95 * fadeOut);
+      this.craneAll.forEach(m => { m.material.opacity = opacity; });
+    }
+
+    // 飞行结束
     if (s.flyProgress >= 1.0) {
       this.scene.remove(this.craneGroup);
+      // 恢复相机 target
+      if (s.camTargetOrig) this.controls.target.copy(s.camTargetOrig);
       if (s.flyResolve) s.flyResolve();
-      s.flyResolve = null; s.phase = 'done';
+      s.flyResolve = null;
+      s.phase = 'done';
     }
   }
 
