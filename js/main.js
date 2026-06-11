@@ -145,6 +145,11 @@ function formatTime(seconds) {
     return `${mins}:${secs}`;
 }
 
+// 注册 Service Worker（PWA）
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/gf-birthday/sw.js');
+}
+
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
     initFloatingParticles();
@@ -264,122 +269,243 @@ const loveQuotes = [
     { text: '关关雎鸠，在河之洲。窈窕淑女，君子好逑。', source: '《诗经·关雎》' },
 ];
 
-const messageList = document.getElementById('message-list');
-let quoteScrollTimer = null;
-const mobileMediaQuery = window.matchMedia('(max-width: 768px)');
+const messageBoardToggle = document.getElementById('message-board-toggle');
+
+// ══════════════════════════════════════
+// 天幕古诗展示
+// ══════════════════════════════════════
+
+const skyCurtain = document.getElementById('sky-curtain');
+const skyStars = document.getElementById('sky-stars');
+const skyPetals = document.getElementById('sky-petals');
+const skyTitleStage = document.getElementById('sky-title-stage');
+const skyLine1 = document.getElementById('sky-line-1');
+const skyLine2 = document.getElementById('sky-line-2');
+const skyPoemScroll = document.getElementById('sky-poem-scroll');
+const skyPoemList = document.getElementById('sky-poem-list');
+const skyExitBtn = document.getElementById('sky-exit-btn');
+
+let skyOpen = false;
+let skyAutoScrollTimer = null;
+let skyUserInteracted = false;
+let skyClosing = false;
+
+// 初始化星空粒子
+function initStars() {
+    skyStars.innerHTML = '';
+    for (let i = 0; i < 80; i++) {
+        const star = document.createElement('span');
+        star.className = 'sky-star';
+        const size = Math.random() * 2.5 + 1;
+        star.style.setProperty('--star-size', `${size}px`);
+        star.style.setProperty('--star-glow', `${size * 3 + 2}px`);
+        star.style.setProperty('--twinkle-duration', `${Math.random() * 3 + 2.5}s`);
+        star.style.setProperty('--twinkle-delay', `${Math.random() * 4}s`);
+        star.style.left = `${Math.random() * 100}%`;
+        star.style.top = `${Math.random() * 100}%`;
+        skyStars.appendChild(star);
+    }
+    scheduleShootingStar();
+}
+
+function scheduleShootingStar() {
+    if (!skyOpen) return;
+    const delay = Math.random() * 6000 + 4000;
+    setTimeout(() => {
+        if (!skyOpen) return;
+        spawnShootingStar();
+        scheduleShootingStar();
+    }, delay);
+}
+
+function spawnShootingStar() {
+    const star = document.createElement('span');
+    star.className = 'sky-star shooting';
+    star.style.left = `${Math.random() * 60 + 20}%`;
+    star.style.top = `${Math.random() * 30}%`;
+    skyStars.appendChild(star);
+    setTimeout(() => star.remove(), 1600);
+}
+
+// 初始化花瓣
+function initSkyPetals() {
+    skyPetals.innerHTML = '';
+    const colors = ['#ffb7c5', '#ffc8d6', '#fda4b5', '#fecdd5', '#ffd1dc'];
+    for (let i = 0; i < 28; i++) {
+        const petal = document.createElement('span');
+        petal.className = 'sky-petal';
+        const inner = document.createElement('span');
+        inner.className = 'sky-petal-inner';
+        const size = Math.random() * 10 + 8;
+        petal.style.setProperty('--sp-x', `${Math.random() * 100}%`);
+        petal.style.setProperty('--sp-size', `${size}px`);
+        petal.style.setProperty('--sp-opacity', (Math.random() * 0.35 + 0.35).toFixed(2));
+        petal.style.setProperty('--sp-color', colors[Math.floor(Math.random() * colors.length)]);
+        petal.style.setProperty('--sp-duration', `${(Math.random() * 10 + 14).toFixed(1)}s`);
+        petal.style.setProperty('--sp-sway-duration', `${(Math.random() * 3 + 4).toFixed(1)}s`);
+        petal.style.setProperty('--sp-delay', `${(-Math.random() * 18).toFixed(1)}s`);
+        petal.appendChild(inner);
+        skyPetals.appendChild(petal);
+    }
+}
+
+// 毛笔书写动画
+function brushWrite(element, text, duration) {
+    return new Promise(resolve => {
+        element.textContent = text;
+        element.classList.add('writing');
+        const start = performance.now();
+        function tick(now) {
+            const elapsed = now - start;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            element.style.setProperty('--reveal', `${eased * 100}%`);
+            if (progress < 1) {
+                requestAnimationFrame(tick);
+            } else {
+                element.style.setProperty('--reveal', '100%');
+                resolve();
+            }
+        }
+        requestAnimationFrame(tick);
+    });
+}
 
 // 渲染诗句列表
-function renderQuotes() {
-    messageList.innerHTML = loveQuotes.map(q => `
-        <div class="message-item">
-            <div class="message-name">${q.text}</div>
-            <div class="message-content">—— ${q.source}</div>
+function renderSkyPoems() {
+    skyPoemList.innerHTML = loveQuotes.map(q => `
+        <div class="sky-poem-item">
+            <p class="sky-poem-text">${q.text}</p>
+            <p class="sky-poem-source">—— ${q.source}</p>
         </div>
     `).join('');
 }
 
-// 自动滚动播放
-function startQuoteScroll() {
-    const container = messageList.parentElement;
-    if (!container || mobileMediaQuery.matches) return;
-    stopQuoteScroll();
-
-    let scrollPos = container.scrollTop;
-    const scrollSpeed = 0.55; // px per tick, very gentle
-
-    quoteScrollTimer = setInterval(() => {
-        if (!document.querySelector('.message-board.active') || mobileMediaQuery.matches) {
-            stopQuoteScroll();
+// 自动滚动
+function startSkyAutoScroll() {
+    if (skyUserInteracted) return;
+    stopSkyAutoScroll();
+    const scrollSpeed = 0.06;
+    let lastTime = performance.now();
+    function tick(now) {
+        if (!skyOpen || skyUserInteracted) {
+            skyAutoScrollTimer = null;
             return;
         }
-        scrollPos += scrollSpeed;
-        container.scrollTop = scrollPos;
-
-        // 滚动到底后循环回顶部
-        if (scrollPos >= container.scrollHeight - container.clientHeight) {
-            scrollPos = 0;
+        const dt = now - lastTime;
+        lastTime = now;
+        skyPoemScroll.scrollTop += scrollSpeed * dt;
+        const bottom = skyPoemScroll.scrollHeight - skyPoemScroll.clientHeight - skyPoemScroll.scrollTop;
+        if (bottom < 10) {
+            skyExitBtn.classList.add('glow');
+            stopSkyAutoScroll();
+            skyAutoScrollTimer = null;
+            return;
         }
-    }, 32);
+        skyAutoScrollTimer = requestAnimationFrame(tick);
+    }
+    skyAutoScrollTimer = requestAnimationFrame(tick);
 }
 
-function stopQuoteScroll() {
-    if (quoteScrollTimer) {
-        clearInterval(quoteScrollTimer);
-        quoteScrollTimer = null;
+function stopSkyAutoScroll() {
+    if (skyAutoScrollTimer) {
+        cancelAnimationFrame(skyAutoScrollTimer);
+        skyAutoScrollTimer = null;
     }
 }
 
-// 初始化渲染
-renderQuotes();
-const quoteContainer = messageList.parentElement;
-['pointerdown', 'wheel', 'touchstart'].forEach(eventName => {
-    quoteContainer?.addEventListener(eventName, stopQuoteScroll, { passive: true });
-});
+// 打开天幕
+async function openSkyCurtain() {
+    if (skyOpen || skyClosing) return;
+    skyOpen = true;
+    skyClosing = false;
+    skyUserInteracted = false;
+    skyExitBtn.classList.remove('glow');
+    setOverlayActive(true);
 
-// 留言板控制
-const messageBoardToggle = document.getElementById('message-board-toggle');
-const messageBoard = document.querySelector('.message-board');
-let isMessageBoardOpen = false;
+    skyCurtain.classList.remove('hidden');
+    skyCurtain.classList.remove('closing');
+    skyCurtain.classList.add('opening');
 
-// 切换留言板显示状态
-function toggleMessageBoard() {
-    isMessageBoardOpen = !isMessageBoardOpen;
-    messageBoard.classList.toggle('active');
+    skyLine1.classList.remove('writing');
+    skyLine2.classList.remove('writing');
+    skyLine1.style.setProperty('--reveal', '0%');
+    skyLine2.style.setProperty('--reveal', '0%');
+    skyTitleStage.classList.remove('fade-out');
+    skyPoemScroll.classList.remove('visible');
+    skyPoemScroll.scrollTop = 0;
 
-    if (isMessageBoardOpen) {
-        // 每次打开时从顶部开始
-        const container = messageBoard.querySelector('.message-container');
-        if (container) container.scrollTop = 0;
-        messageBoardToggle.style.right = window.innerWidth <= 768 ? '100%' : '380px';
-        startQuoteScroll();
-    } else {
-        messageBoardToggle.style.right = '0';
-        stopQuoteScroll();
-    }
+    initStars();
+    initSkyPetals();
+    renderSkyPoems();
+
+    await new Promise(r => setTimeout(r, 900));
+    await brushWrite(skyLine1, '花开有期', 1200);
+    await new Promise(r => setTimeout(r, 200));
+    await brushWrite(skyLine2, '思念无涯', 1200);
+    await new Promise(r => setTimeout(r, 500));
+    skyTitleStage.classList.add('fade-out');
+    await new Promise(r => setTimeout(r, 400));
+    skyPoemScroll.classList.add('visible');
+    await new Promise(r => setTimeout(r, 800));
+    startSkyAutoScroll();
 }
 
-// 点击空白处关闭留言板
-document.addEventListener('click', (e) => {
-    if (isMessageBoardOpen && 
-        !messageBoard.contains(e.target) && 
-        !messageBoardToggle.contains(e.target)) {
-        toggleMessageBoard();
-    }
-});
+// 关闭天幕
+function closeSkyCurtain() {
+    if (!skyOpen || skyClosing) return;
+    skyClosing = true;
+    stopSkyAutoScroll();
+    skyExitBtn.classList.remove('glow');
 
-// 事件监听
+    skyCurtain.classList.add('closing');
+    setTimeout(() => {
+        skyCurtain.classList.add('hidden');
+        skyCurtain.classList.remove('opening', 'closing');
+        skyStars.innerHTML = '';
+        skyPetals.innerHTML = '';
+        skyOpen = false;
+        skyClosing = false;
+        setOverlayActive(false);
+    }, 600);
+}
+
+// 事件绑定
 messageBoardToggle.addEventListener('click', (e) => {
     e.stopPropagation();
-    toggleMessageBoard();
+    openSkyCurtain();
 });
 
-document.getElementById('message-board-close').addEventListener('click', (e) => {
+skyExitBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    toggleMessageBoard();
+    closeSkyCurtain();
 });
 
-// 阻止留言板内部点击事件冒泡
-messageBoard.addEventListener('click', (e) => {
-    e.stopPropagation();
-});
+// 用户手动滚动打断自动播放
+skyPoemScroll.addEventListener('wheel', () => {
+    if (skyOpen && !skyUserInteracted) {
+        skyUserInteracted = true;
+        stopSkyAutoScroll();
+        skyExitBtn.classList.add('glow');
+    }
+}, { passive: true });
 
-// 窗口大小改变时调整留言板状态
-window.addEventListener('resize', () => {
-    if (isMessageBoardOpen) {
-        messageBoardToggle.style.right = window.innerWidth <= 768 ? '100%' : '380px';
-        if (mobileMediaQuery.matches) {
-            stopQuoteScroll();
-        } else if (!quoteScrollTimer) {
-            startQuoteScroll();
-        }
+skyPoemScroll.addEventListener('touchstart', () => {
+    if (skyOpen && !skyUserInteracted) {
+        skyUserInteracted = true;
+        stopSkyAutoScroll();
+    }
+}, { passive: true });
+
+// ESC 关闭
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && skyOpen && !skyClosing) {
+        closeSkyCurtain();
     }
 });
 
 function setOverlayActive(isActive) {
     document.body.classList.toggle('overlay-active', isActive);
-    if (isActive && isMessageBoardOpen) {
-        toggleMessageBoard();
-    }
 }
 
 // 信封开屏逻辑

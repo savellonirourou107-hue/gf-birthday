@@ -102,33 +102,6 @@
 	}
 }
 
-/* ── 优化 9：留言板关闭按钮 ── */
-.message-board-close {
-	position: absolute;
-	top: 16px;
-	right: 16px;
-	width: 36px;
-	height: 36px;
-	border-radius: 50%;
-	border: none;
-	background: rgba(255,255,255,0.18);
-	color: #fff;
-	font-size: 1.4rem;
-	line-height: 1;
-	cursor: pointer;
-	display: grid;
-	place-items: center;
-	transition: background 0.2s ease, transform 0.2s ease;
-	z-index: 10;
-	backdrop-filter: blur(6px);
-	-webkit-backdrop-filter: blur(6px);
-}
-
-.message-board-close:hover {
-	background: rgba(255,255,255,0.3);
-	transform: scale(1.1);
-}
-
 /* ── 优化 10：情话/相册入场动画 ── */
 .page-title.entrance-anim {
 	animation: titleSlideIn 0.65s ease forwards;

@@ -15,6 +15,8 @@
     <meta property="og:url" content="https://savellonirourou107-hue.github.io/gf-birthday/">
     <link rel="canonical" href="https://savellonirourou107-hue.github.io/gf-birthday/">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='52'%3E%F0%9F%92%9D%3C/text%3E%3C/svg%3E">
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>💝 小团，生日快乐！</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -170,19 +172,25 @@
         </div>
     </div>
 
-    <!-- 留言板开关按钮 -->
+    <!-- 天幕古诗展示 -->
+    <div id="sky-curtain" class="sky-curtain hidden">
+        <div class="sky-stars-layer" id="sky-stars" aria-hidden="true"></div>
+        <div class="sky-petal-layer" id="sky-petals" aria-hidden="true"></div>
+        <div class="sky-title-stage" id="sky-title-stage">
+            <p class="sky-title-line" id="sky-line-1">花开有期</p>
+            <p class="sky-title-line" id="sky-line-2">思念无涯</p>
+        </div>
+        <div class="sky-poem-scroll" id="sky-poem-scroll">
+            <div class="sky-poem-list" id="sky-poem-list"></div>
+        </div>
+        <button class="sky-exit-btn" id="sky-exit-btn">✕ 收起天幕</button>
+    </div>
+
+    <!-- 天幕开关按钮 -->
     <button id="message-board-toggle" class="message-board-toggle" title="古诗词">
         <span class="toggle-icon">📜</span>
         <span class="toggle-label">点我点我！</span>
     </button>
-
-    <!-- 诗句侧边栏 -->
-    <div class="message-board">
-        <button class="message-board-close" id="message-board-close" aria-label="关闭">×</button>
-        <div class="message-container">
-            <div class="messages" id="message-list"></div>
-        </div>
-    </div>
 
     <!-- 音乐控制 -->
     <div class="music-control" id="music-player">
