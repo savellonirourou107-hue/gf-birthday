@@ -32,7 +32,7 @@ export class CakeScene {
     this.animId = null;
     this.flameGroup = [];
     this.flamePhases = Array.from({ length: 20 }, () => Math.random() * Math.PI * 2);
-    this.stars = null;
+    this._starLayers = null;
     this.shootingStars = [];
     this.nextShootingStar = 0;
     this.wishPaper = null;
@@ -182,34 +182,175 @@ export class CakeScene {
     return g;
   }
 
-  // ─── 星空 ───
+  // ─── 星空 (「你的名字」风格) ───
   _createStarfield() {
-    const N = 500, pa = new Float32Array(N * 3), sa = new Float32Array(N);
-    for (let i = 0; i < N; i++) {
-      const th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1), r = rand(12, 25);
-      pa[i * 3] = Math.sin(ph) * Math.cos(th) * r;
-      pa[i * 3 + 1] = Math.sin(ph) * Math.sin(th) * r;
-      pa[i * 3 + 2] = Math.cos(ph) * r;
-      sa[i] = rand(0.02, 0.08);
+    // ─ 背景深蓝紫渐变 ─
+    const bgCanvas = document.createElement('canvas'); bgCanvas.width = 2; bgCanvas.height = 512;
+    const bgCtx = bgCanvas.getContext('2d');
+    const bgGrad = bgCtx.createLinearGradient(0, 0, 0, 512);
+    bgGrad.addColorStop(0, '#0a0a2e');    // 顶部：深蓝黑
+    bgGrad.addColorStop(0.3, '#0d1040');  // 深靛蓝
+    bgGrad.addColorStop(0.55, '#1a1045'); // 紫蓝过渡
+    bgGrad.addColorStop(0.75, '#1a1545'); // 偏紫
+    bgGrad.addColorStop(1, '#0d1535');    // 底部：深蓝
+    bgCtx.fillStyle = bgGrad; bgCtx.fillRect(0, 0, 2, 512);
+    const bgTex = new THREE.CanvasTexture(bgCanvas); bgTex.minFilter = THREE.LinearFilter;
+    this.scene.background = bgTex;
+    this.scene.fog = new THREE.Fog(0x0a0a2e, 20, 50);
+
+    // ─ 星芒十字贴图 (4-point star flare) ─
+    const starCanvas = document.createElement('canvas'); starCanvas.width = starCanvas.height = 64;
+    const sctx = starCanvas.getContext('2d');
+    // 十字光芒
+    const sgradH = sctx.createLinearGradient(0, 32, 64, 32);
+    sgradH.addColorStop(0, 'rgba(255,255,255,0)');
+    sgradH.addColorStop(0.42, 'rgba(255,255,255,0.15)');
+    sgradH.addColorStop(0.5, 'rgba(255,255,255,1)');
+    sgradH.addColorStop(0.58, 'rgba(255,255,255,0.15)');
+    sgradH.addColorStop(1, 'rgba(255,255,255,0)');
+    sctx.fillStyle = sgradH; sctx.fillRect(0, 0, 64, 64);
+    const sgradV = sctx.createLinearGradient(0, 0, 0, 64);
+    sgradV.addColorStop(0, 'rgba(255,255,255,0)');
+    sgradV.addColorStop(0.42, 'rgba(255,255,255,0.15)');
+    sgradV.addColorStop(0.5, 'rgba(255,255,255,1)');
+    sgradV.addColorStop(0.58, 'rgba(255,255,255,0.15)');
+    sgradV.addColorStop(1, 'rgba(255,255,255,0)');
+    sctx.fillStyle = sgradV; sctx.fillRect(0, 0, 64, 64);
+    // 中心柔光
+    const cgrad = sctx.createRadialGradient(32, 32, 0, 32, 32, 10);
+    cgrad.addColorStop(0, 'rgba(255,255,255,1)');
+    cgrad.addColorStop(0.3, 'rgba(255,255,255,0.8)');
+    cgrad.addColorStop(0.7, 'rgba(255,255,255,0.2)');
+    cgrad.addColorStop(1, 'rgba(255,255,255,0)');
+    sctx.fillStyle = cgrad; sctx.fillRect(16, 16, 32, 32);
+    const starFlareTex = new THREE.CanvasTexture(starCanvas);
+    starFlareTex.needsUpdate = true;
+
+    // ─ 柔和光点贴图 ─
+    const dotCanvas = document.createElement('canvas'); dotCanvas.width = dotCanvas.height = 32;
+    const dctx = dotCanvas.getContext('2d');
+    const dgrad = dctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    dgrad.addColorStop(0, 'rgba(255,255,255,1)');
+    dgrad.addColorStop(0.08, 'rgba(255,255,255,0.9)');
+    dgrad.addColorStop(0.25, 'rgba(255,255,255,0.5)');
+    dgrad.addColorStop(0.5, 'rgba(255,255,255,0.1)');
+    dgrad.addColorStop(1, 'rgba(0,0,0,0)');
+    dctx.fillStyle = dgrad; dctx.fillRect(0, 0, 32, 32);
+    const dotTex = new THREE.CanvasTexture(dotCanvas);
+
+    // ─ 第1层：银河带密集小星 (800颗) ─
+    const N1 = 800, pa1 = new Float32Array(N1 * 3), ca1 = new Float32Array(N1 * 3), sa1 = new Float32Array(N1);
+    for (let i = 0; i < N1; i++) {
+      // 银河带状分布：沿赤道附近的一圈，带宽度约 ±20°
+      const th = Math.random() * Math.PI * 2;
+      const ph = Math.acos(2 * Math.random() - 1);
+      // 让星星集中在"银河带"：一个环绕天空的带状区域
+      const bandCenter = Math.PI * 0.45; // 银河带中心纬度
+      const bandWidth = 0.35;
+      const bandPh = Math.acos(2 * Math.random() - 1);
+      const ph2 = bandCenter + (bandPh - Math.PI / 2) * bandWidth;
+      const r = rand(13, 22);
+      pa1[i * 3] = Math.sin(ph2) * Math.cos(th) * r;
+      pa1[i * 3 + 1] = Math.cos(ph2) * r;
+      pa1[i * 3 + 2] = Math.sin(ph2) * Math.sin(th) * r;
+      sa1[i] = rand(0.015, 0.05);
+      // 颜色：偏蓝白到暖白
+      const hue = rand(0.58, 0.68), sat = rand(0.05, 0.25), light = rand(0.7, 0.95);
+      const col = new THREE.Color(); col.setHSL(hue, sat, light);
+      ca1[i * 3] = col.r; ca1[i * 3 + 1] = col.g; ca1[i * 3 + 2] = col.b;
     }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(pa, 3));
+    const layer1 = new THREE.Points(
+      new THREE.BufferGeometry(),
+      new THREE.PointsMaterial({ size: 0.06, map: dotTex, blending: THREE.AdditiveBlending, depthWrite: false,
+        transparent: true, opacity: 0.75, vertexColors: true, sizeAttenuation: true })
+    );
+    layer1.geometry.setAttribute('position', new THREE.BufferAttribute(pa1, 3));
+    layer1.geometry.setAttribute('color', new THREE.BufferAttribute(ca1, 3));
+    layer1.geometry.setAttribute('size', new THREE.BufferAttribute(sa1, 1));
+    this.scene.add(layer1);
+    this.starLayers = [layer1];
 
-    const c = document.createElement('canvas'); c.width = c.height = 32;
-    const ctx = c.getContext('2d');
-    const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.15, 'rgba(255,255,255,0.8)');
-    grad.addColorStop(0.4, 'rgba(200,200,255,0.3)');
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = grad; ctx.fillRect(0, 0, 32, 32);
+    // ─ 第2层：亮星带星芒 (150颗) ─
+    const N2 = 150, pa2 = new Float32Array(N2 * 3), ca2 = new Float32Array(N2 * 3);
+    for (let i = 0; i < N2; i++) {
+      const th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1), r = rand(14, 24);
+      pa2[i * 3] = Math.sin(ph) * Math.cos(th) * r;
+      pa2[i * 3 + 1] = Math.sin(ph) * Math.sin(th) * r;
+      pa2[i * 3 + 2] = Math.cos(ph) * r;
+      const hue = rand(0.55, 0.7), sat = rand(0.02, 0.15), light = rand(0.85, 1);
+      const col = new THREE.Color(); col.setHSL(hue, sat, light);
+      ca2[i * 3] = col.r; ca2[i * 3 + 1] = col.g; ca2[i * 3 + 2] = col.b;
+    }
+    const layer2 = new THREE.Points(
+      new THREE.BufferGeometry(),
+      new THREE.PointsMaterial({ size: 0.22, map: starFlareTex, blending: THREE.AdditiveBlending, depthWrite: false,
+        transparent: true, opacity: 0.85, vertexColors: true, sizeAttenuation: true })
+    );
+    layer2.geometry.setAttribute('position', new THREE.BufferAttribute(pa2, 3));
+    layer2.geometry.setAttribute('color', new THREE.BufferAttribute(ca2, 3));
+    this.scene.add(layer2);
+    this.starLayers.push(layer2);
 
-    this.stars = new THREE.Points(geo, new THREE.PointsMaterial({
-      size: 0.08, map: new THREE.CanvasTexture(c), color: '#ccccee',
-      blending: THREE.AdditiveBlending, depthWrite: false,
-      transparent: true, opacity: 0.9, sizeAttenuation: true,
-    }));
-    this.scene.add(this.stars);
+    // ─ 第3层：散布小星点缀 (350颗，空间均匀分布) ─
+    const N3 = 350, pa3 = new Float32Array(N3 * 3), ca3 = new Float32Array(N3 * 3), sa3 = new Float32Array(N3);
+    for (let i = 0; i < N3; i++) {
+      const th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1), r = rand(15, 26);
+      pa3[i * 3] = Math.sin(ph) * Math.cos(th) * r;
+      pa3[i * 3 + 1] = Math.sin(ph) * Math.sin(th) * r;
+      pa3[i * 3 + 2] = Math.cos(ph) * r;
+      sa3[i] = rand(0.01, 0.04);
+      const hue = rand(0.55, 0.72), sat = rand(0.03, 0.3), light = rand(0.65, 0.9);
+      const col = new THREE.Color(); col.setHSL(hue, sat, light);
+      ca3[i * 3] = col.r; ca3[i * 3 + 1] = col.g; ca3[i * 3 + 2] = col.b;
+    }
+    const layer3 = new THREE.Points(
+      new THREE.BufferGeometry(),
+      new THREE.PointsMaterial({ size: 0.05, map: dotTex, blending: THREE.AdditiveBlending, depthWrite: false,
+        transparent: true, opacity: 0.7, vertexColors: true, sizeAttenuation: true })
+    );
+    layer3.geometry.setAttribute('position', new THREE.BufferAttribute(pa3, 3));
+    layer3.geometry.setAttribute('color', new THREE.BufferAttribute(ca3, 3));
+    layer3.geometry.setAttribute('size', new THREE.BufferAttribute(sa3, 1));
+    this.scene.add(layer3);
+    this.starLayers.push(layer3);
+
+    // ─ 第4层：星云光斑 (柔和大光点模拟星云) ─
+    const nebulaCanvas = document.createElement('canvas'); nebulaCanvas.width = nebulaCanvas.height = 128;
+    const nctx = nebulaCanvas.getContext('2d');
+    const nGrad = nctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    nGrad.addColorStop(0, 'rgba(100,120,255,0.15)');
+    nGrad.addColorStop(0.2, 'rgba(60,80,200,0.08)');
+    nGrad.addColorStop(0.5, 'rgba(30,40,150,0.03)');
+    nGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    nctx.fillStyle = nGrad; nctx.fillRect(0, 0, 128, 128);
+    const nebulaTex = new THREE.CanvasTexture(nebulaCanvas);
+
+    const N4 = 12, pa4 = new Float32Array(N4 * 3), ca4 = new Float32Array(N4 * 3);
+    for (let i = 0; i < N4; i++) {
+      const th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1) * 0.5 + Math.PI * 0.3, r = rand(16, 24);
+      pa4[i * 3] = Math.sin(ph) * Math.cos(th) * r;
+      pa4[i * 3 + 1] = Math.sin(ph) * Math.sin(th) * r;
+      pa4[i * 3 + 2] = Math.cos(ph) * r;
+      const colTint = Math.random();
+      let col;
+      if (colTint < 0.4) col = new THREE.Color('#4455aa');
+      else if (colTint < 0.7) col = new THREE.Color('#5533aa');
+      else col = new THREE.Color('#3355aa');
+      ca4[i * 3] = col.r; ca4[i * 3 + 1] = col.g; ca4[i * 3 + 2] = col.b;
+    }
+    const layer4 = new THREE.Points(
+      new THREE.BufferGeometry(),
+      new THREE.PointsMaterial({ size: 2.5, map: nebulaTex, blending: THREE.AdditiveBlending, depthWrite: false,
+        transparent: true, opacity: 0.5, vertexColors: true, sizeAttenuation: true })
+    );
+    layer4.geometry.setAttribute('position', new THREE.BufferAttribute(pa4, 3));
+    layer4.geometry.setAttribute('color', new THREE.BufferAttribute(ca4, 3));
+    this.scene.add(layer4);
+    this.starLayers.push(layer4);
+
+    // 存储用于动画闪烁
+    this._starLayers = [layer1, layer2, layer3, layer4];
+    this._starFlareTex = starFlareTex;
   }
 
   _spawnShootingStar() {
@@ -313,7 +454,16 @@ export class CakeScene {
   }
 
   _animStars(t, dt) {
-    if (this.stars) this.stars.material.opacity = 0.85 + Math.sin(t * 1.5) * 0.05 + Math.sin(t * 3.7) * 0.03;
+    // ─ 星空闪烁：各层以不同频率呼吸 ─
+    if (this._starLayers) {
+      this._starLayers[0].material.opacity = 0.7 + Math.sin(t * 1.1) * 0.05 + Math.sin(t * 2.3) * 0.03;
+      if (this._starLayers[1]) this._starLayers[1].material.opacity = 0.78 + Math.sin(t * 0.7) * 0.07 + Math.sin(t * 1.9) * 0.05;
+      if (this._starLayers[2]) this._starLayers[2].material.opacity = 0.65 + Math.sin(t * 0.9) * 0.05 + Math.sin(t * 3.1) * 0.04;
+      if (this._starLayers[3]) this._starLayers[3].material.opacity = 0.45 + Math.sin(t * 0.3) * 0.08;
+      // 旋转银河带（缓慢自转）
+      this._starLayers[0].rotation.y += dt * 0.015;
+      this._starLayers[1].rotation.y += dt * 0.01;
+    }
     // 流星出现频率：每 1~2.5 秒一颗，最多同时 4 颗
     if (t >= this.nextShootingStar) {
       this._spawnShootingStar();
@@ -727,6 +877,16 @@ export class CakeScene {
     this.shootingStars = [];
     this.confettiParticles.forEach(c => { this.scene?.remove(c); c.geometry.dispose(); c.material.dispose(); });
     this.confettiParticles = [];
+    if (this._starLayers) {
+      this._starLayers.forEach(layer => {
+        if (!layer) return;
+        this.scene?.remove(layer);
+        layer.geometry.dispose();
+        if (layer.material.map) layer.material.map.dispose();
+        layer.material.dispose();
+      });
+      this._starLayers = null;
+    }
     if (this.craneGroup) {
       this.scene?.remove(this.craneGroup);
       this.craneGroup.traverse(ch => { if (ch.geometry) ch.geometry.dispose(); if (ch.material) (Array.isArray(ch.material) ? ch.material : [ch.material]).forEach(m => m.dispose()); });
