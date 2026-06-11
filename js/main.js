@@ -384,19 +384,21 @@ function renderSkyPoems() {
 // 自动滚动
 function startSkyAutoScroll() {
     if (skyUserInteracted) return;
+    // 内容不够滚动就不启动
+    if (skyPoemScroll.scrollHeight <= skyPoemScroll.clientHeight) return;
     stopSkyAutoScroll();
-    const scrollSpeed = 0.06;
+    const scrollSpeed = 28; // px/s
     let lastTime = performance.now();
     function tick(now) {
         if (!skyOpen || skyUserInteracted) {
             skyAutoScrollTimer = null;
             return;
         }
-        const dt = now - lastTime;
+        const dt = (now - lastTime) / 1000;
         lastTime = now;
         skyPoemScroll.scrollTop += scrollSpeed * dt;
         const bottom = skyPoemScroll.scrollHeight - skyPoemScroll.clientHeight - skyPoemScroll.scrollTop;
-        if (bottom < 10) {
+        if (bottom < 4) {
             skyExitBtn.classList.add('glow');
             stopSkyAutoScroll();
             skyAutoScrollTimer = null;

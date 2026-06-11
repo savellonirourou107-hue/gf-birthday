@@ -1751,7 +1751,6 @@ body.overlay-active .music-control {
     bottom: 0;
     z-index: 2503;
     overflow-y: auto;
-    scroll-behavior: smooth;
     padding: 40vh 1.5rem 120px;
     opacity: 0;
     transform: translateY(40px);
