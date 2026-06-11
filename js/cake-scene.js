@@ -507,16 +507,27 @@ export class CakeScene {
     }
   }
 
-  // ─── 许愿纸 ───
+  // ─── 许愿纸（高分辨率正方形，支持顶点折叠动画）───
   showWishPaper() {
     if (this.wishPaper) return;
-    const geo = new THREE.PlaneGeometry(1.5, 2.0, 6, 8);
-    const mat = new THREE.MeshStandardMaterial({ color: '#FFF8E7', roughness: 0.6, metalness: 0.02, side: THREE.DoubleSide });
+    const segs = 16, geo = new THREE.PlaneGeometry(1.5, 1.5, segs, segs);
+    const mat = new THREE.MeshStandardMaterial({
+      color: '#FFF8E7', roughness: 0.55, metalness: 0.02,
+      side: THREE.DoubleSide, emissive: '#FFF8E7', emissiveIntensity: 0.08,
+    });
     this.wishPaper = new THREE.Mesh(geo, mat);
     this.wishPaper.position.set(0, 1.8, 2.2);
     this.wishPaper.rotation.x = -0.3;
     this.wishPaper.castShadow = this.wishPaper.receiveShadow = true;
-    this.wishPaperBaseVerts = new Float32Array(geo.attributes.position.array);
+    // 折痕边线（随折叠过程动态更新）
+    const edgeGeo = new THREE.EdgesGeometry(geo, 20);
+    this._foldEdgeLine = new THREE.LineSegments(edgeGeo,
+      new THREE.LineBasicMaterial({ color: '#c8b898', transparent: true, opacity: 0.4, depthTest: true }));
+    this._foldEdgeLine.renderOrder = 1;
+    this.wishPaper.add(this._foldEdgeLine);
+    // 保存基础顶点 & 预计算 5 个折叠阶段的目标位置
+    this._foldBaseVerts = new Float32Array(geo.attributes.position.array);
+    this._initFoldStages(segs);
     this.scene.add(this.wishPaper);
     this.paperAnimState = { phase: 'floating', startTime: 0, foldProgress: 0, flyProgress: 0, baseY: 1.8 };
   }
@@ -525,158 +536,154 @@ export class CakeScene {
     if (!this.wishPaper || !this.paperAnimState) return;
     const s = this.paperAnimState;
     if (s.phase === 'floating') {
+      // 纸张漂浮微动
       this.wishPaper.position.y = s.baseY + Math.sin(t * 1.5) * 0.08;
       this.wishPaper.rotation.z = Math.sin(t * 0.7) * 0.05;
     }
     if (s.phase === 'folding') {
-      // 折叠持续 4.0 秒，纸张淡出，千纸鹤同步淡入
+      // 驱动顶点折叠动画，总时长 6 秒
       const elapsed = t - s.startTime;
-      s.foldProgress = Math.min(elapsed / 4.0, 1.0);
-      if (this.wishPaper.material.opacity !== undefined) {
-        this.wishPaper.material.transparent = true;
-        this.wishPaper.material.opacity = 1.0 - s.foldProgress;
-      }
-      // 千纸鹤同步淡入（加速曲线，让造型快速显现）
-      if (this.craneAll && this.craneAll.length) {
-        const craneOpacity = eoc(s.foldProgress) * 0.95;
-        this.craneAll.forEach(m => { m.material.opacity = craneOpacity; });
-      }
+      s.foldProgress = Math.min(elapsed / 6.0, 1.0);
+      this._updateFoldGeometry(s.foldProgress);
+      // 折叠过程中纸张轻微上下浮动
+      this.wishPaper.position.y = s.baseY + Math.sin(t * 2.5) * 0.04 * (1 - s.foldProgress);
       if (s.foldProgress >= 1.0) { s.phase = 'folded'; s.startTime = t; }
     }
   }
 
-  // ─── 构建折纸千纸鹤模型 ───
-  _buildOrigamiCrane() {
-    const group = new THREE.Group();
-    const allMeshes = [];
-
-    // 纸张材质：暖白、微粗糙、带暗光
-    const mat = new THREE.MeshStandardMaterial({
-      color: '#FFF8E7',
-      roughness: 0.5,
-      metalness: 0.02,
-      side: THREE.DoubleSide,
-      emissive: '#FFF8E7',
-      emissiveIntensity: 0.1,
-      transparent: true,
-      opacity: 0.95,
-    });
-
-    // 折痕线材质
-    const lineMat = new THREE.LineBasicMaterial({
-      color: '#c8b898',
-      transparent: true,
-      opacity: 0.35,
-      depthTest: true,
-    });
-
-    // 辅助：创建一个三角面 + 折痕边线
-    const makeTri = (v1, v2, v3, parent) => {
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
-        v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z,
-      ]), 3));
-      geo.computeVertexNormals();
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.castShadow = true;
-      mesh.renderOrder = 0;
-      // 折痕边线
-      const edges = new THREE.EdgesGeometry(geo, 15);
-      const line = new THREE.LineSegments(edges, lineMat);
-      line.renderOrder = 1;
-      mesh.add(line);
-      parent.add(mesh);
-      allMeshes.push(mesh);
-      return mesh;
-    };
-
-    // ── 身体顶点 ──
-    const ct = new THREE.Vector3(0, 0.2, 0);       // 中心脊线上端
-    const cb = new THREE.Vector3(0, -0.15, 0);     // 中心脊线下端
-    const fr = new THREE.Vector3(0, -0.05, 0.3);   // 前（颈部连接处）
-    const bk = new THREE.Vector3(0, -0.05, -0.35); // 后（尾部连接处）
-    const lt = new THREE.Vector3(-0.25, -0.05, 0); // 左
-    const rt = new THREE.Vector3(0.25, -0.05, 0);  // 右
-
-    // ── 身体子组 ──
-    const bodyGroup = new THREE.Group();
-    // 右侧身体面
-    makeTri(ct, fr, rt, bodyGroup);
-    makeTri(cb, fr, rt, bodyGroup);
-    makeTri(ct, rt, bk, bodyGroup);
-    makeTri(cb, rt, bk, bodyGroup);
-    // 左侧身体面
-    makeTri(ct, lt, fr, bodyGroup);
-    makeTri(cb, lt, fr, bodyGroup);
-    makeTri(ct, bk, lt, bodyGroup);
-    makeTri(cb, bk, lt, bodyGroup);
-
-    // ── 左翅膀子组（枢轴在身体左侧） ──
-    const leftWingGroup = new THREE.Group();
-    leftWingGroup.position.copy(lt);
-    const lwTip = new THREE.Vector3(-0.3, 0.6, 0.05);   // 翼尖：左上方
-    const lwBack = new THREE.Vector3(0.15, -0.05, -0.2); // 翼后缘
-    makeTri(new THREE.Vector3(0, 0, 0), lwTip, lwBack, leftWingGroup);
-
-    // ── 右翅膀子组（枢轴在身体右侧） ──
-    const rightWingGroup = new THREE.Group();
-    rightWingGroup.position.copy(rt);
-    const rwTip = new THREE.Vector3(0.3, 0.6, 0.05);    // 翼尖：右上方
-    const rwBack = new THREE.Vector3(-0.15, -0.05, -0.2); // 翼后缘
-    makeTri(new THREE.Vector3(0, 0, 0), rwTip, rwBack, rightWingGroup);
-
-    // ── 颈部子组（枢轴在身体前方） ──
-    const neckGroup = new THREE.Group();
-    neckGroup.position.copy(fr);
-    const nkMid = new THREE.Vector3(0, 0.12, 0.18);  // 颈中部
-    const nkTip = new THREE.Vector3(0, 0.18, 0.32);  // 颈尖（头顶折点）
-    makeTri(new THREE.Vector3(0, 0, 0), nkMid, nkTip, neckGroup);
-    // 头部小折角（从颈尖向前下折）
-    const hdTip = new THREE.Vector3(0, 0.1, 0.4);    // 头尖
-    makeTri(nkTip, hdTip, nkMid, neckGroup);
-
-    // ── 尾部子组（枢轴在身体后方） ──
-    const tailGroup = new THREE.Group();
-    tailGroup.position.copy(bk);
-    const tlTip = new THREE.Vector3(0, 0.1, -0.32);  // 尾尖：后上方
-    const tlBase = new THREE.Vector3(0.03, -0.05, 0); // 尾根微宽
-    makeTri(new THREE.Vector3(0, 0, 0), tlTip, tlBase, tailGroup);
-
-    // ── 组装 ──
-    group.add(bodyGroup);
-    group.add(leftWingGroup);
-    group.add(rightWingGroup);
-    group.add(neckGroup);
-    group.add(tailGroup);
-
-    // 翅膀初始旋转（向上展开约 30°）
-    leftWingGroup.rotation.z = -0.3;
-    rightWingGroup.rotation.z = 0.3;
-
-    this.craneGroup = group;
-    this.craneAll = allMeshes;
-    this.craneWings = { left: leftWingGroup, right: rightWingGroup };
+  // ═══ 折纸折叠系统：预计算 5 个阶段顶点 + 逐帧插值 ═══
+  _initFoldStages(segs) {
+    const N = segs + 1, S = 0.75, total = N * N;
+    this._foldStages = [];
+    for (let s = 0; s < 5; s++) this._foldStages.push(new Float32Array(total * 3));
+    for (let j = 0; j < N; j++) {
+      for (let i = 0; i < N; i++) {
+        const idx = (j * N + i) * 3, u = i / segs, v = j / segs;
+        const px = (u - 0.5) * S * 2, py = (v - 0.5) * S * 2;
+        for (let s = 0; s < 5; s++) {
+          const p = this._stagePos(u, v, px, py, s + 1, S);
+          this._foldStages[s][idx] = p[0];
+          this._foldStages[s][idx + 1] = p[1];
+          this._foldStages[s][idx + 2] = p[2];
+        }
+      }
+    }
   }
 
-  // ─── foldToCrane ───
+  // 计算顶点在指定折叠阶段的三维位置（每阶段在上阶段基础上变形）
+  _stagePos(u, v, px, py, stage, S) {
+    // ── 阶段1：沿对角线 u=v 对折 ──
+    let bx, by, bz;
+    if (u >= v) { bx = px; by = py; bz = 0; }
+    else { bx = (v - 0.5) * S * 2; by = (u - 0.5) * S * 2; bz = (v - u) * 0.015; }
+    if (stage === 1) return [bx, by, bz];
+
+    // ── 阶段2：兔耳折 — 两个底角向上折起 ──
+    const bot2 = Math.max(0, Math.min(1, (-by / S + 1) * 0.5));
+    const sid2 = Math.min(1, Math.abs(bx) / (S * 1.05));
+    const l2 = bot2 * sid2;
+    bx *= (1 - l2 * 0.45); by += l2 * 1.1; bz += l2 * 0.55;
+    if (stage === 2) return [bx, by, bz];
+
+    // ── 阶段3：收窄身体、纵向拉伸 ──
+    bz += Math.abs(bx) * 0.18;
+    bx *= 0.4; by *= 1.15;
+    if (stage === 3) return [bx, by, bz];
+
+    // ── 阶段4：头部下弯 + 尾部后伸 ──
+    const hf = Math.max(0, Math.min(1, (by + 0.1) / (S * 1.5)));
+    const tf = Math.max(0, Math.min(1, (-by + 0.1) / (S * 1.3)));
+    by += -hf * 0.2 - tf * 0.15;
+    bz += hf * 0.4 - tf * 0.5;
+    if (stage === 4) return [bx, by, bz];
+
+    // ── 阶段5：翅膀向外展开 ──
+    const wf = Math.max(0, Math.min(1, (Math.abs(bx) - 0.06) / 0.35));
+    return [bx + wf * (bx > 0 ? 0.5 : -0.5), by + wf * (-0.15), bz + wf * 0.1];
+  }
+
+  // 根据全局折叠进度 interpolate 顶点位置（每帧调用）
+  _updateFoldGeometry(globalProgress) {
+    const stageDefs = [
+      { start: 0.00, end: 0.20 }, // 阶段1：对角折 6.0×0.20=1.2s
+      { start: 0.20, end: 0.45 }, // 阶段2：兔耳折 6.0×0.25=1.5s
+      { start: 0.45, end: 0.65 }, // 阶段3：收窄   6.0×0.20=1.2s
+      { start: 0.65, end: 0.85 }, // 阶段4：头尾   6.0×0.20=1.2s
+      { start: 0.85, end: 1.00 }, // 阶段5：展翅   6.0×0.15=0.9s
+    ];
+    // 确定当前阶段
+    let si = 0;
+    for (let i = 0; i < stageDefs.length; i++) {
+      if (globalProgress >= stageDefs[i].start) si = i;
+    }
+    const stg = stageDefs[si];
+    const localP = globalProgress >= stg.end ? 1.0
+      : (globalProgress - stg.start) / (stg.end - stg.start);
+    // easeInOutCubic
+    const t = localP < 0.5 ? 4 * localP * localP * localP
+      : 1 - Math.pow(-2 * localP + 2, 3) / 2;
+
+    const posArr = this.wishPaper.geometry.attributes.position.array;
+
+    // 阶段0→1：顶点绕对角线物理旋转折叠
+    if (si === 0) {
+      this._updateDiagonalFold(t, posArr);
+    } else {
+      // 阶段1→5：直接插值预计算数组（缓动已提供非线性）
+      const startArr = this._foldStages[si - 1];
+      const endArr = this._foldStages[si];
+      for (let k = posArr.length - 1; k >= 0; k--) {
+        posArr[k] = startArr[k] + (endArr[k] - startArr[k]) * t;
+      }
+    }
+
+    this.wishPaper.geometry.attributes.position.needsUpdate = true;
+    this.wishPaper.geometry.computeVertexNormals();
+    // 同步更新折痕边线
+    if (this._foldEdgeLine) {
+      this._foldEdgeLine.geometry.dispose();
+      this._foldEdgeLine.geometry = new THREE.EdgesGeometry(this.wishPaper.geometry, 20);
+    }
+  }
+
+  // 阶段0→1：顶点绕对角线旋转（模拟真实纸张翻折，角速度 π rad）
+  _updateDiagonalFold(t, posArr) {
+    const segs = 16, N = segs + 1, S = 0.75;
+    const theta = t * Math.PI; // 旋转角 0→180°
+    const cosT = Math.cos(theta), sinT = Math.sin(theta);
+    for (let j = 0; j < N; j++) {
+      for (let i = 0; i < N; i++) {
+        const idx = (j * N + i) * 3;
+        const u = i / segs, v = j / segs;
+        const px = (u - 0.5) * S * 2, py = (v - 0.5) * S * 2;
+        if (u >= v) {
+          // 对角线下方：保持不动
+          posArr[idx] = px; posArr[idx + 1] = py; posArr[idx + 2] = 0;
+        } else {
+          // 对角线上方：绕对角线轴 (1,1,0)/√2 旋转 theta
+          const dAlong = (px + py) / Math.SQRT2;
+          const dPerp = (py - px) / Math.SQRT2; // > 0 在对角线上方
+          const dPerpRot = dPerp * cosT;
+          const zRot = dPerp * sinT;
+          posArr[idx] = (dAlong - dPerpRot) / Math.SQRT2;
+          posArr[idx + 1] = (dAlong + dPerpRot) / Math.SQRT2;
+          posArr[idx + 2] = zRot + (v - u) * 0.008 * (1 - cosT);
+        }
+      }
+    }
+  }
+
+  // ─── foldToCrane：启动顶点折叠动画 ───
   foldToCrane() {
     return new Promise((resolve) => {
       if (!this.wishPaper) { resolve(); return; }
       const s = this.paperAnimState;
-      // 构建千纸鹤模型
-      this._buildOrigamiCrane();
-      // 将千纸鹤放在纸张位置
-      this.craneGroup.position.copy(this.wishPaper.position);
-      this.craneGroup.rotation.copy(this.wishPaper.rotation);
-      // 初始不可见
-      this.craneAll.forEach(m => { m.material.opacity = 0; });
-      this.scene.add(this.craneGroup);
-      // 开始折叠过渡（纸张淡出 + 千纸鹤淡入）
+      // 开始 6 秒顶点折叠动画
       s.phase = 'folding'; s.startTime = performance.now() / 1000; s.foldProgress = 0;
       const check = () => {
         if (s.phase === 'folded') {
-          // 千纸鹤完成后停留 1.5 秒，让用户看清楚
-          setTimeout(() => { this._startCraneAnimation(resolve); }, 1500);
+          // 折叠完成后停留 2 秒供欣赏，再起飞
+          setTimeout(() => { this._startCraneAnimation(resolve); }, 2000);
           return;
         }
         if (s.phase !== 'flying') requestAnimationFrame(check);
@@ -685,88 +692,101 @@ export class CakeScene {
     });
   }
 
-  // ─── 千纸鹤飞行启动 ───
+  // ─── 千纸鹤飞行启动（折叠几何体直接起飞）───
   _startCraneAnimation(resolve) {
-    // 移除已不可见的纸张
-    if (this.wishPaper) {
-      this.scene.remove(this.wishPaper);
-      this.wishPaper.geometry.dispose();
-      this.wishPaper.material.dispose();
-      this.wishPaper = null;
-    }
-
     const s = this.paperAnimState;
-    const crane = this.craneGroup;
-
-    // 贝塞尔飞行路径：当前位置 → 右上弧线 → 略回左 → 上升飞远
     s.flyPath = {
-      start: crane.position.clone(),
+      start: this.wishPaper.position.clone(),
       cp1: new THREE.Vector3(1.0, 3.5, 1.0),
       cp2: new THREE.Vector3(2.0, 5.5, -1.5),
       end: new THREE.Vector3(3.5, 7.5, -4.5),
     };
-
-    // 保存相机初始状态用于飞行时微调
     s.camTargetOrig = this.controls.target.clone();
-
     s.phase = 'flying';
     s.startTime = performance.now() / 1000;
     s.flyProgress = 0;
     s.flyResolve = resolve;
   }
 
-  // ─── 千纸鹤飞行动画 ───
+  // ─── 千纸鹤飞行动画（折叠几何体直接飞，顶点级翅膀扑动）───
   _animCrane(t) {
-    if (!this.craneGroup || !this.paperAnimState || this.paperAnimState.phase !== 'flying') return;
+    if (!this.wishPaper || !this.paperAnimState || this.paperAnimState.phase !== 'flying') return;
     const s = this.paperAnimState;
     const elapsed = t - s.startTime;
     s.flyProgress = Math.min(elapsed / 5.0, 1.0);
     const fp = eio(s.flyProgress);
 
-    // 位置：沿贝塞尔曲线移动
+    // 沿贝塞尔曲线移动
     const pos = bezier(fp, s.flyPath.start, s.flyPath.cp1, s.flyPath.cp2, s.flyPath.end);
-    this.craneGroup.position.copy(pos);
+    this.wishPaper.position.copy(pos);
 
-    // 缩放：逐渐变小，最终缩到 0.05
+    // 逐渐缩小
     const scale = 1.0 - fp * 0.95;
-    this.craneGroup.scale.setScalar(scale);
+    this.wishPaper.scale.setScalar(scale);
 
-    // 朝向：始终面朝飞行方向
+    // 面朝飞行方向
     const nextFp = Math.min(fp + 0.03, 1.0);
     const lookTarget = bezier(nextFp, s.flyPath.start, s.flyPath.cp1, s.flyPath.cp2, s.flyPath.end);
-    this.craneGroup.lookAt(lookTarget);
+    this.wishPaper.lookAt(lookTarget);
+    this.wishPaper.rotateZ(Math.sin(fp * Math.PI * 0.7) * 0.25);
 
-    // 轻微横滚（转弯时倾斜）
-    this.craneGroup.rotateZ(Math.sin(fp * Math.PI * 0.7) * 0.25);
+    // 翅膀顶点扑动
+    this._applyWingFlap(Math.sin(elapsed * Math.PI * 2 * 3.5) * 0.15);
 
-    // 翅膀柔和扑动：幅度约 0.18，频率约 3.5 Hz
-    const wingAngle = Math.sin(elapsed * Math.PI * 2 * 3.5) * 0.18;
-    if (this.craneWings) {
-      this.craneWings.left.rotation.z = -0.3 + wingAngle;
-      this.craneWings.right.rotation.z = 0.3 - wingAngle;
-    }
-
-    // 相机微妙跟随：千纸鹤上升时 camera target 略上移
+    // 相机跟随
     if (s.camTargetOrig && fp < 0.8) {
       this.controls.target.y = s.camTargetOrig.y + fp * 1.2;
     }
 
-    // 最后阶段千纸鹤淡出
+    // 末尾淡出
     if (fp > 0.8) {
       const fadeOut = 1.0 - (fp - 0.8) / 0.2;
-      const opacity = Math.max(0, 0.95 * fadeOut);
-      this.craneAll.forEach(m => { m.material.opacity = opacity; });
+      this.wishPaper.material.transparent = true;
+      this.wishPaper.material.opacity = Math.max(0, fadeOut);
+      if (this._foldEdgeLine) {
+        this._foldEdgeLine.material.opacity = Math.max(0, 0.4 * fadeOut);
+      }
     }
 
-    // 飞行结束
+    // 飞行结束，清理资源
     if (s.flyProgress >= 1.0) {
-      this.scene.remove(this.craneGroup);
-      // 恢复相机 target
+      this.scene.remove(this.wishPaper);
+      this.wishPaper.geometry.dispose();
+      this.wishPaper.material.dispose();
+      if (this._foldEdgeLine) { this._foldEdgeLine.geometry.dispose(); this._foldEdgeLine.material.dispose(); }
+      this.wishPaper = null;
+      this._foldEdgeLine = null;
+      this._foldStages = null;
+      this._foldBaseVerts = null;
       if (s.camTargetOrig) this.controls.target.copy(s.camTargetOrig);
       if (s.flyResolve) s.flyResolve();
       s.flyResolve = null;
       s.phase = 'done';
     }
+  }
+
+  // 飞行时翅膀顶点扑动：从阶段5静止姿态出发，绕 Z 轴旋转翅膀区域顶点
+  _applyWingFlap(angle) {
+    if (!this.wishPaper || !this._foldStages || this._foldStages.length < 5) return;
+    const posArr = this.wishPaper.geometry.attributes.position.array;
+    const stage5 = this._foldStages[4]; // 展翅静止姿态（阶段5）
+    // 先恢复全部顶点到阶段5静止姿态
+    posArr.set(stage5);
+    // 再对翅膀区域顶点施加旋转
+    for (let k = 0; k < posArr.length; k += 3) {
+      const sx = stage5[k];
+      const wf = Math.max(0, Math.min(1, (Math.abs(sx) - 0.08) / 0.3));
+      if (wf <= 0) continue;
+      const sign = sx > 0 ? 1 : -1;
+      const a = angle * wf * sign;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      const sy = stage5[k + 1], sz = stage5[k + 2];
+      posArr[k] = sx * ca - sy * sa;
+      posArr[k + 1] = sx * sa + sy * ca;
+      posArr[k + 2] = sz;
+    }
+    this.wishPaper.geometry.attributes.position.needsUpdate = true;
+    this.wishPaper.geometry.computeVertexNormals();
   }
 
   // ─── blowCandles ───
