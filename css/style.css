@@ -926,7 +926,7 @@ body.overlay-active .message-board {
     box-shadow:
         0 10px 18px rgba(72, 33, 23, 0.18),
         inset 0 1px 0 rgba(255, 255, 255, 0.82);
-    transform: translateY(46%) rotate(-0.25deg);
+    transform: translateY(20%) rotate(-0.25deg);
     opacity: 0.98;
     z-index: 2;
     transition: transform 1.45s cubic-bezier(0.18, 0.84, 0.24, 1), box-shadow 1s ease;
@@ -1088,7 +1088,7 @@ body.overlay-active .message-board {
 }
 
 .css-envelope.extracting .css-letter {
-    transform: translateY(-51%) rotate(-0.35deg) translateZ(8px);
+    transform: translateY(-68%) rotate(-0.35deg) translateZ(8px);
     box-shadow:
         0 24px 38px rgba(72, 33, 23, 0.26),
         inset 0 1px 0 rgba(255, 255, 255, 0.82);
