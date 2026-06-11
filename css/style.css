@@ -211,11 +211,11 @@ body.overlay-active .message-board {
 .container {
     text-align: center;
     padding: 2.5rem 2rem;
-    background: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 250, 247, 0.72);
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     border-radius: 24px;
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    box-shadow: 0 18px 42px rgba(92, 61, 46, 0.14);
     border: 1px solid rgba(255, 255, 255, 0.18);
     position: relative;
     z-index: 1;
@@ -231,7 +231,7 @@ body.overlay-active .message-board {
 
 .page-title h1 {
     font-size: 2.5rem;
-    color: #333;
+    color: var(--color-secondary);
     margin-bottom: 1rem;
     font-family: var(--font-serif);
     letter-spacing: 0;
@@ -346,6 +346,7 @@ body.overlay-active .message-board {
     right: 20px;
     z-index: 1000;
     display: flex;
+    flex-direction: row-reverse;
     align-items: center;
     gap: 0.7rem;
     pointer-events: none;
@@ -414,7 +415,7 @@ body.overlay-active .message-board {
 }
 
 .music-control.expanded .music-panel {
-    width: 210px;
+    width: clamp(170px, 46vw, 210px);
     opacity: 1;
     pointer-events: auto;
     padding: 0.55rem 0.7rem;
@@ -589,7 +590,7 @@ body.overlay-active .message-board {
     right: -400px; /* 初始隐藏 */
     width: 380px;
     height: 100vh;
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(74, 24, 38, 0.88);
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     border-left: 1px solid rgba(255, 255, 255, 0.18);
@@ -601,6 +602,11 @@ body.overlay-active .message-board {
 
 .message-board.active {
     right: 0;
+}
+
+.message-board.active ~ .music-control {
+    opacity: 0;
+    pointer-events: none;
 }
 
 .message-container {
@@ -621,8 +627,9 @@ body.overlay-active .message-board {
 }
 
 .message-item {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 15px;
+    background: rgba(255, 245, 248, 0.12);
+    border: 1px solid rgba(255, 245, 248, 0.14);
+    border-radius: 12px;
     padding: 1rem;
     margin-bottom: 1rem;
     transition: transform 0.3s ease;
@@ -634,7 +641,7 @@ body.overlay-active .message-board {
 
 .message-name {
     font-weight: bold;
-    color: #ffe0c0;
+    color: #fff5f6;
     margin-bottom: 0.3rem;
     font-family: var(--font-serif);
     font-size: 1.15rem;
@@ -642,8 +649,9 @@ body.overlay-active .message-board {
 }
 
 .message-content {
-    color: rgba(255,255,255,0.65);
-    font-size: 0.85rem;
+    color: #f1c8ba;
+    font-size: 0.92rem;
+    line-height: 1.65;
     font-family: var(--font-main);
     font-style: italic;
 }
@@ -755,6 +763,7 @@ body.overlay-active .message-board {
     .message-board {
         width: 100%;
         right: -100%;
+        background: rgba(43, 12, 22, 0.96);
     }
 
     .message-board-toggle {
@@ -912,9 +921,13 @@ body.overlay-active .message-board {
     color: var(--ink-brown);
     line-height: 1.45;
     letter-spacing: 0;
+    visibility: hidden;
     opacity: 0;
     transform: translateY(6px);
-    transition: opacity 0.55s ease 0.45s, transform 0.55s ease 0.45s;
+    transition:
+        visibility 0s linear 0.45s,
+        opacity 0.55s ease 0.45s,
+        transform 0.55s ease 0.45s;
 }
 
 .css-letter-title {
@@ -1039,6 +1052,11 @@ body.overlay-active .message-board {
     transform: translate(-50%, -50%) scale(0.58) translateY(8px);
 }
 
+.css-envelope.opening .css-envelope-to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+}
+
 .css-envelope.extracting .css-letter {
     transform: translateY(-51%) rotate(-0.35deg) translateZ(8px);
     box-shadow:
@@ -1048,8 +1066,13 @@ body.overlay-active .message-board {
 
 .css-envelope.extracting .css-letter-title,
 .css-envelope.extracting .css-letter-sub {
+    visibility: visible;
     opacity: 1;
     transform: translateY(0);
+    transition:
+        visibility 0s linear,
+        opacity 0.55s ease 0.25s,
+        transform 0.55s ease 0.25s;
 }
 
 .css-envelope.extracting .css-envelope-to {
@@ -1081,7 +1104,14 @@ body.overlay-active .message-board {
 
 /* 提示文字 */
 .envelope-hint {
-    color: rgba(255, 255, 255, 0.5);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.45rem 0.9rem;
+    border: 1px solid rgba(255, 245, 248, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 245, 248, 0.08);
+    color: rgba(255, 245, 248, 0.78);
     font-size: 0.85rem;
     margin-top: 2.5rem;
     letter-spacing: 0;
@@ -1405,6 +1435,7 @@ body.overlay-active .message-board {
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
+    scroll-padding-bottom: calc(104px + env(safe-area-inset-bottom));
     isolation: isolate;
 }
 
@@ -1459,7 +1490,7 @@ body.overlay-active .message-board {
 
 .letter-paper {
     position: relative;
-    padding: 2.5rem 2rem;
+    padding: 2.5rem 2rem 7rem;
     border-radius: 6px;
     background:
         repeating-linear-gradient(180deg, transparent 0 29px, rgba(176, 140, 120, 0.14) 30px 31px),
@@ -1470,7 +1501,7 @@ body.overlay-active .message-board {
         0 3px 8px rgba(72, 33, 23, 0.1),
         inset 0 1px 0 rgba(255, 255, 255, 0.8);
     text-align: left;
-    font-family: var(--font-hand);
+    font-family: var(--font-serif);
     color: #4a3028;
     line-height: 30px;
     overflow: hidden;
@@ -1489,6 +1520,7 @@ body.overlay-active .message-board {
 }
 
 .letter-dear {
+    font-family: var(--font-hand);
     font-size: 1.25rem;
     line-height: 30px;
     color: #8c3650;
@@ -1497,8 +1529,8 @@ body.overlay-active .message-board {
 }
 
 .letter-body {
-    font-size: 1.1rem;
-    line-height: 30px;
+    font-size: 1.05rem;
+    line-height: 1.9;
     min-height: 16em;
     white-space: pre-wrap;
 }
@@ -1525,6 +1557,7 @@ body.overlay-active .message-board {
     opacity: 0;
     transform: translateY(10px);
     transition: opacity 0.8s ease, transform 0.8s ease;
+    font-family: var(--font-hand);
 }
 
 .letter-sign.hidden {
@@ -1548,10 +1581,16 @@ body.overlay-active .message-board {
 }
 
 .letter-done-btn {
-    margin-top: 2rem;
+    position: fixed;
+    left: 50%;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    z-index: 2301;
+    width: min(320px, calc(100vw - 32px));
+    margin: 0;
     text-align: center;
     opacity: 0;
-    transform: translateY(12px);
+    transform: translate(-50%, 16px);
+    pointer-events: none;
     transition: opacity 0.6s ease 0.4s, transform 0.6s ease 0.4s;
 }
 
@@ -1561,12 +1600,16 @@ body.overlay-active .message-board {
 
 .letter-done-btn.visible {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, 0);
+    pointer-events: auto;
 }
 
 .letter-done-btn .modal-start-btn {
-    width: min(100%, 280px);
+    width: 100%;
     padding-inline: 1.4rem;
+    box-shadow:
+        0 18px 40px rgba(231, 53, 91, 0.34),
+        0 0 0 8px rgba(12, 6, 10, 0.16);
 }
 
 /* 情话和相册延迟浮现 */
@@ -1617,7 +1660,7 @@ body.overlay-active .message-board {
     }
 
     .letter-paper {
-        padding: 1.8rem 1.2rem;
+        padding: 1.8rem 1.2rem 7rem;
     }
 
     .letter-body {

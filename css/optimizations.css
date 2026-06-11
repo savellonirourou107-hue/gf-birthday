@@ -59,7 +59,7 @@
 }
 
 .music-control.expanded .music-panel {
-	max-width: 220px;
+	max-width: clamp(170px, 46vw, 210px);
 	transform: scaleX(1);
 }
 
@@ -90,7 +90,7 @@
 /* ── 优化 8：长信移动端行距自适应 ── */
 @media (max-width: 768px) {
 	.letter-paper {
-		padding: 1.5rem 1rem;
+		padding: 1.5rem 1rem 7rem;
 	}
 
 	.letter-dear {
@@ -245,7 +245,7 @@ a:focus-visible,
 /* ── 长信左对齐（不改变字体） ── */
 .letter-body {
 	text-align: left;
-	line-height: 30px;
+	line-height: 1.9;
 }
 
 /* ══════════════════════════════════════
@@ -296,6 +296,14 @@ a:focus-visible,
 @keyframes photoBreathe {
 	0%, 100% { transform: rotate(var(--r)) scale(1); }
 	50%      { transform: rotate(calc(var(--r) + 0.5deg)) scale(1.025); }
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.album-section.delayed-reveal.visible .photo-card:hover {
+		animation: none;
+		opacity: 1;
+		transform: rotate(0deg) scale(1.035);
+	}
 }
 
 /* ── 照片点击光标 ── */
@@ -421,25 +429,26 @@ a:focus-visible,
 
 /* ── 灯箱移动端 ── */
 @media (max-width: 768px) {
+	.album-section.delayed-reveal.visible .photo-card,
+	.album-section.delayed-reveal.visible .photo-card:nth-child(1),
+	.album-section.delayed-reveal.visible .photo-card:nth-child(2),
+	.album-section.delayed-reveal.visible .photo-card:nth-child(3),
+	.album-section.delayed-reveal.visible .photo-card:nth-child(4) {
+		animation: photoEnter 0.65s ease forwards;
+	}
+
 	.lightbox-prev,
 	.lightbox-next {
-		width: 40px;
-		height: 52px;
+		width: max(56px, 22vw);
+		height: 100%;
 		font-size: 1.6rem;
+		background: transparent;
 	}
+
 	.lightbox-image-wrap img {
 		max-width: 95vw;
 		max-height: 60vh;
 	}
-}
-
-/* ── 照片占位 SVG ── */
-.photo-placeholder {
-	width: 100%;
-	height: calc(100% - 40px);
-	display: block;
-	border-radius: 2px;
-	pointer-events: none;
 }
 
 /* ── 移动端优化（续） ── */

@@ -266,6 +266,7 @@ const loveQuotes = [
 
 const messageList = document.getElementById('message-list');
 let quoteScrollTimer = null;
+const mobileMediaQuery = window.matchMedia('(max-width: 768px)');
 
 // 渲染诗句列表
 function renderQuotes() {
@@ -280,14 +281,15 @@ function renderQuotes() {
 // 自动滚动播放
 function startQuoteScroll() {
     const container = messageList.parentElement;
-    if (!container) return;
+    if (!container || mobileMediaQuery.matches) return;
+    stopQuoteScroll();
 
-    let scrollPos = 0;
-    const scrollSpeed = 0.3; // px per frame, very gentle
+    let scrollPos = container.scrollTop;
+    const scrollSpeed = 0.55; // px per tick, very gentle
 
-    function scroll() {
-        if (!document.querySelector('.message-board.active')) {
-            quoteScrollTimer = null;
+    quoteScrollTimer = setInterval(() => {
+        if (!document.querySelector('.message-board.active') || mobileMediaQuery.matches) {
+            stopQuoteScroll();
             return;
         }
         scrollPos += scrollSpeed;
@@ -297,22 +299,22 @@ function startQuoteScroll() {
         if (scrollPos >= container.scrollHeight - container.clientHeight) {
             scrollPos = 0;
         }
-
-        quoteScrollTimer = requestAnimationFrame(scroll);
-    }
-
-    scroll();
+    }, 32);
 }
 
 function stopQuoteScroll() {
     if (quoteScrollTimer) {
-        cancelAnimationFrame(quoteScrollTimer);
+        clearInterval(quoteScrollTimer);
         quoteScrollTimer = null;
     }
 }
 
 // 初始化渲染
 renderQuotes();
+const quoteContainer = messageList.parentElement;
+['pointerdown', 'wheel', 'touchstart'].forEach(eventName => {
+    quoteContainer?.addEventListener(eventName, stopQuoteScroll, { passive: true });
+});
 
 // 留言板控制
 const messageBoardToggle = document.getElementById('message-board-toggle');
@@ -371,6 +373,11 @@ messageBoard.addEventListener('click', (e) => {
 window.addEventListener('resize', () => {
     if (isMessageBoardOpen) {
         messageBoardToggle.style.right = window.innerWidth <= 768 ? '10px' : '400px';
+        if (mobileMediaQuery.matches) {
+            stopQuoteScroll();
+        } else if (!quoteScrollTimer) {
+            startQuoteScroll();
+        }
     }
 });
 
@@ -560,9 +567,10 @@ const longLetter = document.getElementById('long-letter');
 const letterBody = document.getElementById('letter-body');
 const letterSign = document.getElementById('letter-sign');
 const letterSignDate = document.querySelector('.letter-sign-date');
+const LETTER_TYPE_SPEED = 28;
 let letterTyped = false;
 
-function typeLetter(text, element, speed = 93) {
+function typeLetter(text, element, speed = LETTER_TYPE_SPEED) {
     return new Promise(resolve => {
         element.classList.add('typing');
         let i = 0;
@@ -630,7 +638,7 @@ quizContinueBtn.addEventListener('click', async () => {
     }, 400);
 
     await new Promise(r => setTimeout(r, 1100));
-    await typeLetter(letterText, letterBody, 87);
+    await typeLetter(letterText, letterBody, LETTER_TYPE_SPEED);
 
     // 打印完毕，显示签名和日期
     const today = new Date();
@@ -645,7 +653,7 @@ quizContinueBtn.addEventListener('click', async () => {
     requestAnimationFrame(() => {
         letterDone.classList.add('visible');
         setTimeout(() => {
-            letterDone.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            longLetter.scrollTo({ top: longLetter.scrollHeight, behavior: 'smooth' });
         }, 120);
     });
 });
@@ -765,8 +773,20 @@ document.addEventListener('keydown', (e) => {
 
 // 触摸滑动
 let touchStartX = 0;
-photoLightbox.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+let touchStartY = 0;
+photoLightbox.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
 photoLightbox.addEventListener('touchend', (e) => {
-    const diff = touchStartX - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 60) navigateLightbox(diff > 0 ? 1 : -1);
+    const diffX = touchStartX - e.changedTouches[0].clientX;
+    const diffY = touchStartY - e.changedTouches[0].clientY;
+    const isHorizontalSwipe = Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY) * 1.5;
+    if (isHorizontalSwipe) navigateLightbox(diffX > 0 ? 1 : -1);
+});
+
+photoLightbox.addEventListener('touchcancel', () => {
+    touchStartX = 0;
+    touchStartY = 0;
 });
