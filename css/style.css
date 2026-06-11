@@ -1529,6 +1529,7 @@ body.overlay-active .message-board {
 }
 
 .letter-body {
+    font-family: var(--font-hand);
     font-size: 1.05rem;
     line-height: 1.9;
     min-height: 16em;
