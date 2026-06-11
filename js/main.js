@@ -325,22 +325,16 @@ let isMessageBoardOpen = false;
 function toggleMessageBoard() {
     isMessageBoardOpen = !isMessageBoardOpen;
     messageBoard.classList.toggle('active');
-    messageBoardToggle.style.right = isMessageBoardOpen ? '400px' : '20px';
 
     if (isMessageBoardOpen) {
         // 每次打开时从顶部开始
         const container = messageBoard.querySelector('.message-container');
         if (container) container.scrollTop = 0;
+        messageBoardToggle.style.right = window.innerWidth <= 768 ? '100%' : '380px';
         startQuoteScroll();
     } else {
+        messageBoardToggle.style.right = '0';
         stopQuoteScroll();
-    }
-
-    // 移动端适配
-    if (window.innerWidth <= 768) {
-        messageBoardToggle.style.right = isMessageBoardOpen ? '10px' : '10px';
-        messageBoardToggle.querySelector('.toggle-icon').style.transform =
-            isMessageBoardOpen ? 'rotate(180deg)' : 'rotate(0)';
     }
 }
 
@@ -372,7 +366,7 @@ messageBoard.addEventListener('click', (e) => {
 // 窗口大小改变时调整留言板状态
 window.addEventListener('resize', () => {
     if (isMessageBoardOpen) {
-        messageBoardToggle.style.right = window.innerWidth <= 768 ? '10px' : '400px';
+        messageBoardToggle.style.right = window.innerWidth <= 768 ? '100%' : '380px';
         if (mobileMediaQuery.matches) {
             stopQuoteScroll();
         } else if (!quoteScrollTimer) {
