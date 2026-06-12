@@ -149,9 +149,10 @@
 
     <!-- 蛋糕入口 -->
     <div class="cake-entry">
-        <button id="cake-icon-btn" class="cake-icon-btn" title="点蜡烛许愿">
-            <span class="cake-icon-emoji">🕯️</span>
-            <span class="cake-icon-label">帮我把蜡烛吹灭</span>
+        <button id="cake-icon-btn" class="cake-icon-btn" title="吹蜡烛许愿">
+            <span class="cake-icon-emoji">🎂</span>
+            <span class="cake-icon-label">吹灭蜡烛，许个愿</span>
+            <span class="cake-icon-sub">点一下，打开小团的生日蛋糕</span>
         </button>
     </div>
 
@@ -268,34 +269,59 @@
         <div class="lightbox-dots" id="lightbox-dots"></div>
     </div>
 
-    <!-- 3D蛋糕场景 -->
+    <!-- 二维卡通蛋糕场景 -->
     <div id="cake-scene-container" class="cake-scene-container hidden">
-        <div id="cake-canvas-wrap" class="cake-canvas-wrap"></div>
-        <!-- 许愿信纸overlay -->
-        <div id="wish-overlay" class="wish-overlay hidden">
-            <div class="wish-paper">
-                <p class="wish-title">许个愿吧 ✨</p>
-                <div class="wish-input-wrap">
-                    <textarea id="wish-input" class="wish-input" placeholder="在这里写下你的愿望…" maxlength="50"></textarea>
-                    <span class="wish-char-count">0 / 50</span>
+        <div class="cake-2d-modal">
+            <button id="cake-close-btn" class="cake-close-btn" aria-label="收起蛋糕" title="收起蛋糕">收起蛋糕 ✕</button>
+            <div class="cake-scene-bg" aria-hidden="true">
+                <span class="cake-star star-1">✦</span>
+                <span class="cake-star star-2">✧</span>
+                <span class="cake-star star-3">♡</span>
+                <span class="cake-star star-4">✿</span>
+            </div>
+            <p class="cake-scene-title">小团的生日蛋糕</p>
+            <p id="cake-hint" class="cake-hint">轻轻点一下，许个愿再吹灭蜡烛吧</p>
+            <div class="cartoon-cake" id="cartoon-cake">
+                <div class="candles" aria-hidden="true">
+                    <span class="candle"><i></i></span>
+                    <span class="candle"><i></i></span>
+                    <span class="candle"><i></i></span>
+                    <span class="candle"><i></i></span>
+                    <span class="candle"><i></i></span>
                 </div>
-                <button id="wish-done-btn" class="wish-done-btn">我写好了</button>
+                <div class="cake-top">
+                    <span class="strawberry berry-1"></span>
+                    <span class="strawberry berry-2"></span>
+                    <span class="cream-dot dot-1"></span>
+                    <span class="cream-dot dot-2"></span>
+                    <span class="cream-dot dot-3"></span>
+                </div>
+                <div class="cake-layer layer-1">
+                    <span class="icing drip-1"></span>
+                    <span class="icing drip-2"></span>
+                    <span class="icing drip-3"></span>
+                </div>
+                <div class="cake-layer layer-2">
+                    <span class="heart-sugar">♡</span>
+                    <span class="heart-sugar">♡</span>
+                    <span class="heart-sugar">♡</span>
+                </div>
+                <div class="cake-plate"></div>
+            </div>
+            <button id="blow-candle-btn" class="blow-candle-btn">呼～帮我吹灭蜡烛</button>
+            <div id="wish-overlay" class="wish-overlay hidden">
+                <div class="wish-paper">
+                    <p class="wish-title">许个愿吧 ✨</p>
+                    <div class="wish-input-wrap">
+                        <textarea id="wish-input" class="wish-input" placeholder="在这里写下你的愿望…" maxlength="50"></textarea>
+                        <span class="wish-char-count">0 / 50</span>
+                    </div>
+                    <button id="wish-done-btn" class="wish-done-btn">我写好了</button>
+                </div>
             </div>
         </div>
-        <!-- 提示文字 -->
-        <div id="cake-hint" class="cake-hint"></div>
-        <!-- 关闭按钮 -->
-        <button id="cake-close-btn" class="cake-close-btn hidden">✕</button>
     </div>
 
-    <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-      }
-    }
-    </script>
     <script src="js/main.js"></script>
 </body>
 </html> 
