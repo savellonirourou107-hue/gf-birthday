@@ -2711,20 +2711,28 @@ body.overlay-active .music-control {
 }
 
 .album-swiper .swiper-pagination-bullet {
-    width: 3px;
-    height: 3px;
-    background: rgba(255, 143, 163, 0.4);
-    border: 1px solid rgba(255, 143, 163, 0.18);
+    width: 14px;
+    height: 14px;
+    border: none;
+    border-radius: 0;
     opacity: 1;
+    background-color: rgba(196, 90, 128, 0.25);
+    mask-image: url('../assets/images/rose-dot.svg');
+    -webkit-mask-image: url('../assets/images/rose-dot.svg');
+    mask-size: contain;
+    -webkit-mask-size: contain;
+    mask-repeat: no-repeat;
+    -webkit-mask-repeat: no-repeat;
+    mask-position: center;
+    -webkit-mask-position: center;
     transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .album-swiper .swiper-pagination-bullet-active {
-    width: 9px;
-    border-radius: 1.5px;
-    background: var(--color-rose-deep);
-    border-color: var(--color-rose-deep);
-    box-shadow: 0 0 4px rgba(214, 56, 101, 0.35);
+    width: 18px;
+    height: 18px;
+    background-color: var(--color-rose-deep);
+    box-shadow: 0 0 8px rgba(214, 56, 101, 0.35);
 }
 
 /* photo-card 适配 swiper */

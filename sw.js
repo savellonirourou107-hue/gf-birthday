@@ -1,4 +1,4 @@
-const CACHE = 'gf-birthday-v2';
+const CACHE = 'gf-birthday-v3';
 const ASSETS = [
   '/gf-birthday/',
   '/gf-birthday/index.html',
@@ -11,6 +11,8 @@ const ASSETS = [
   '/gf-birthday/assets/images/photo3.jpg',
   '/gf-birthday/assets/images/photo4.jpg',
   '/gf-birthday/assets/images/preview.jpg',
+  '/gf-birthday/assets/images/rose-dot.svg',
+  '/gf-birthday/assets/images/birthday-cake-illustration.svg',
   '/gf-birthday/manifest.json'
 ];
 
