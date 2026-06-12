@@ -24,13 +24,16 @@ const musicButton = document.getElementById('music-btn');
 const musicToggle = document.getElementById('music-toggle');
 const musicPlayer = document.getElementById('music-player');
 const musicProgressBar = document.getElementById('music-progress-bar');
-const musicTime = document.getElementById('music-time');
+const musicProgressSlider = document.getElementById('music-progress-slider');
+const musicTimeCurrent = document.getElementById('music-time-current');
+const musicTimeDuration = document.getElementById('music-time-duration');
 const bgm = document.getElementById('bgm');
 const particlesLayer = document.getElementById('page-particles');
 const introMask = document.getElementById('intro-mask');
 const particleCount = 32;
 let typeTimer = null;
 let hasTypedInitialMessage = false;
+let isMusicProgressDragging = false;
 
 // 显示随机情话的函数
 function showRandomMessage() {
@@ -70,14 +73,55 @@ function initIntroMask() {
         return;
     }
 
+    // 动态创建诗句元素
+    const poemEl = document.createElement('p');
+    poemEl.className = 'intro-poem';
+    poemEl.innerHTML = '两情若是久长时<br>又岂在朝朝暮暮';
+    poemEl.setAttribute('aria-hidden', 'true');
+    introMask.appendChild(poemEl);
+
+    const heartEl = introMask.querySelector('.intro-heart');
+    const copyEl = introMask.querySelector('.intro-copy');
+
     const reveal = () => {
         if (introMask.classList.contains('opening')) return;
-        document.body.classList.remove('intro-pending');
-        document.body.classList.add('intro-ready');
-        introMask.classList.add('opening');
-        setTimeout(() => {
-            introMask.remove();
-        }, 1200);
+
+        const useGSAP = typeof gsap !== 'undefined';
+        if (useGSAP) {
+            const tl = gsap.timeline({
+                onComplete: () => {
+                    document.body.classList.remove('intro-pending');
+                    document.body.classList.add('intro-ready');
+                    introMask.classList.add('opening');
+                    gsap.to(introMask, {
+                        clipPath: 'circle(0% at 50% 50%)',
+                        opacity: 0,
+                        duration: 1.15,
+                        ease: 'power2.in',
+                        onComplete: () => introMask.remove(),
+                    });
+                },
+            });
+            tl.to(heartEl, { opacity: 0, scale: 0.8, duration: 0.4, ease: 'power2.in' }, 0)
+              .to(copyEl, { opacity: 0, duration: 0.3 }, 0)
+              .fromTo(poemEl,
+                { opacity: 0, y: 20 },
+                { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' },
+                0.4)
+              .to(poemEl, { opacity: 0, y: -10, duration: 0.6, ease: 'power2.in' }, 1.6);
+        } else {
+            // CSS fallback
+            heartEl.classList.add('fading');
+            copyEl.style.opacity = '0';
+            setTimeout(() => { poemEl.classList.add('show'); }, 400);
+            setTimeout(() => { poemEl.classList.add('fading'); }, 1600);
+            setTimeout(() => {
+                document.body.classList.remove('intro-pending');
+                document.body.classList.add('intro-ready');
+                introMask.classList.add('opening');
+                setTimeout(() => { introMask.remove(); }, 1200);
+            }, 2200);
+        }
     };
 
     introMask.addEventListener('click', reveal);
@@ -92,11 +136,11 @@ async function playMusic() {
     try {
         await bgm.play();
         isMusicPlaying = true;
-        musicButton.textContent = '❚❚';
+        updateMusicButtonIcon();
         musicPlayer.classList.add('playing');
     } catch (error) {
         isMusicPlaying = false;
-        musicButton.textContent = '▶';
+        updateMusicButtonIcon();
         musicPlayer.classList.remove('playing');
     }
 }
@@ -104,8 +148,17 @@ async function playMusic() {
 function pauseMusic() {
     bgm.pause();
     isMusicPlaying = false;
-    musicButton.textContent = '▶';
+    updateMusicButtonIcon();
     musicPlayer.classList.remove('playing');
+}
+
+function updateMusicButtonIcon() {
+    const iconEl = musicButton.querySelector('.music-btn-icon');
+    if (iconEl) {
+        iconEl.textContent = isMusicPlaying ? '⏸' : '▶';
+    } else {
+        musicButton.textContent = isMusicPlaying ? '⏸' : '▶';
+    }
 }
 
 function toggleMusic() {
@@ -130,12 +183,36 @@ musicToggle.addEventListener('click', () => {
 bgm.addEventListener('timeupdate', updateMusicProgress);
 bgm.addEventListener('loadedmetadata', updateMusicProgress);
 
+// 进度条拖动
+if (musicProgressSlider) {
+    musicProgressSlider.addEventListener('input', () => {
+        isMusicProgressDragging = true;
+        if (bgm.duration) {
+            const val = parseFloat(musicProgressSlider.value);
+            bgm.currentTime = (val / 100) * bgm.duration;
+        }
+    });
+    musicProgressSlider.addEventListener('change', () => {
+        isMusicProgressDragging = false;
+    });
+}
+
 function updateMusicProgress() {
     const duration = Number.isFinite(bgm.duration) ? bgm.duration : 0;
     const current = Number.isFinite(bgm.currentTime) ? bgm.currentTime : 0;
-    const percent = duration ? Math.min(100, (current / duration) * 100) : 0;
-    musicProgressBar.style.width = `${percent}%`;
-    musicTime.textContent = formatTime(current);
+    if (!isMusicProgressDragging && musicProgressSlider) {
+        const percent = duration ? Math.min(100, (current / duration) * 100) : 0;
+        musicProgressSlider.value = percent;
+        musicProgressSlider.style.setProperty('--progress', `${percent}%`);
+    }
+    // 更新旧版进度条（兼容）
+    if (musicProgressBar) {
+        const percent = duration ? Math.min(100, (current / duration) * 100) : 0;
+        musicProgressBar.style.width = `${percent}%`;
+    }
+    // 更新时间显示
+    if (musicTimeCurrent) musicTimeCurrent.textContent = formatTime(current);
+    if (musicTimeDuration) musicTimeDuration.textContent = formatTime(duration);
 }
 
 function formatTime(seconds) {
@@ -154,6 +231,8 @@ if ('serviceWorker' in navigator) {
 document.addEventListener('DOMContentLoaded', () => {
     initFloatingParticles();
     initIntroMask();
+    initAlbumSwiper();
+    initWishCharCount();
     // 不自动播放，等用户关闭弹窗后再播
 });
 
@@ -204,10 +283,26 @@ function initMessageObserver() {
 // Toast 提示
 function showToast(text) {
     const toast = document.getElementById('share-toast');
-    toast.textContent = text;
-    toast.classList.add('show');
+    toast.innerHTML = `<span>✓ ${text}</span><span class="share-toast-subtitle">发给小团了吗？😊</span>`;
+    toast.classList.remove('hiding');
     clearTimeout(toast._timeout);
-    toast._timeout = setTimeout(() => toast.classList.remove('show'), 2000);
+
+    if (typeof gsap !== 'undefined') {
+        gsap.killTweensOf(toast);
+        gsap.fromTo(toast, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.25, ease: 'power2.out' });
+        toast._timeout = setTimeout(() => {
+            gsap.to(toast, {
+                opacity: 0, y: -10, duration: 0.2, ease: 'power2.in',
+                onComplete: () => { toast.classList.remove('show'); },
+            });
+        }, 2500);
+    } else {
+        toast.classList.add('show');
+        toast._timeout = setTimeout(() => {
+            toast.classList.add('hiding');
+            setTimeout(() => toast.classList.remove('show', 'hiding'), 200);
+        }, 2500);
+    }
 }
 
 // 分享功能
@@ -327,6 +422,34 @@ function spawnShootingStar() {
     setTimeout(() => star.remove(), 1600);
 }
 
+// CSS 流星（Module 7）
+let skyMeteorTimer = null;
+function scheduleMeteor() {
+    if (!skyOpen) return;
+    const delay = Math.random() * 4000 + 4000;
+    skyMeteorTimer = setTimeout(() => {
+        if (!skyOpen) return;
+        spawnMeteor();
+        scheduleMeteor();
+    }, delay);
+}
+
+function spawnMeteor() {
+    const meteor = document.createElement('span');
+    meteor.className = 'sky-meteor';
+    meteor.style.left = `${Math.random() * 70 + 5}%`;
+    meteor.style.top = `${Math.random() * 20}%`;
+    skyCurtain.appendChild(meteor);
+    setTimeout(() => meteor.remove(), 1300);
+}
+
+function stopMeteorTimer() {
+    if (skyMeteorTimer) {
+        clearTimeout(skyMeteorTimer);
+        skyMeteorTimer = null;
+    }
+}
+
 // 初始化花瓣
 function initSkyPetals() {
     skyPetals.innerHTML = '';
@@ -417,7 +540,6 @@ async function openSkyCurtain() {
 
     skyCurtain.classList.remove('hidden');
     skyCurtain.classList.remove('closing');
-    skyCurtain.classList.add('opening');
 
     skyLine1.classList.remove('writing');
     skyLine2.classList.remove('writing');
@@ -430,6 +552,15 @@ async function openSkyCurtain() {
     initStars();
     initSkyPetals();
     renderSkyPoems();
+    scheduleMeteor();
+
+    // GSAP curtain reveal
+    if (typeof gsap !== 'undefined') {
+        gsap.fromTo(skyCurtain, { clipPath: 'circle(0% at 50% 50%)', opacity: 0 },
+            { clipPath: 'circle(150% at 50% 50%)', opacity: 1, duration: 0.8, ease: 'power2.out' });
+    } else {
+        skyCurtain.classList.add('opening');
+    }
 
     await new Promise(r => setTimeout(r, 900));
     await brushWrite(skyLine1, '花开有期', 1200);
@@ -448,18 +579,39 @@ function closeSkyCurtain() {
     if (!skyOpen || skyClosing) return;
     skyClosing = true;
     stopSkyAutoScroll();
+    stopMeteorTimer();
     skyExitBtn.classList.remove('glow');
 
-    skyCurtain.classList.add('closing');
-    setTimeout(() => {
-        skyCurtain.classList.add('hidden');
-        skyCurtain.classList.remove('opening', 'closing');
-        skyStars.innerHTML = '';
-        skyPetals.innerHTML = '';
-        skyOpen = false;
-        skyClosing = false;
-        setOverlayActive(false);
-    }, 600);
+    if (typeof gsap !== 'undefined') {
+        gsap.to(skyCurtain, {
+            clipPath: 'circle(0% at 50% 50%)',
+            opacity: 0,
+            duration: 0.6,
+            ease: 'power2.in',
+            onComplete: () => {
+                skyCurtain.classList.add('hidden');
+                skyCurtain.classList.remove('opening', 'closing');
+                skyCurtain.style.clipPath = '';
+                skyCurtain.style.opacity = '';
+                skyStars.innerHTML = '';
+                skyPetals.innerHTML = '';
+                skyOpen = false;
+                skyClosing = false;
+                setOverlayActive(false);
+            },
+        });
+    } else {
+        skyCurtain.classList.add('closing');
+        setTimeout(() => {
+            skyCurtain.classList.add('hidden');
+            skyCurtain.classList.remove('opening', 'closing');
+            skyStars.innerHTML = '';
+            skyPetals.innerHTML = '';
+            skyOpen = false;
+            skyClosing = false;
+            setOverlayActive(false);
+        }, 600);
+    }
 }
 
 // 事件绑定
@@ -514,27 +666,57 @@ function openEnvelope() {
     envelopeStarted = true;
 
     envelopeScreen.classList.add('reading');
-    cssEnvelope.classList.add('opening');
 
-    setTimeout(() => {
-        cssEnvelope.classList.add('extracting');
-    }, 900);
-
-    setTimeout(() => {
-        envelopeFloat.classList.add('departing');
-        envelopeScreen.classList.add('transition-bg');
-    }, 2600);
-
-    setTimeout(() => {
-        envelopeScreen.classList.add('fade-out');
+    const useGSAP = typeof gsap !== 'undefined';
+    if (useGSAP) {
+        // GSAP Timeline：精确编排封盖→抽信→飘离→淡出
+        const tl = gsap.timeline({
+            onComplete: () => {
+                envelopeScreen.style.display = 'none';
+                birthdayModal.classList.remove('hidden');
+            },
+        });
+        // flap opening
+        tl.set(cssEnvelope, { className: '+=opening flap-opening' })
+          // letter extract at 0.9s
+          .set(cssEnvelope, { className: '+=extracting' }, 0.9)
+          // departing at 2.6s
+          .to(envelopeFloat, {
+            scale: 1.4, opacity: 0, duration: 1, ease: 'power2.in',
+          }, 2.6)
+          .to(envelopeScreen, {
+            background: 'radial-gradient(ellipse at center, #ff9a9e 0%, #fad0c4 100%)',
+            duration: 1.2, ease: 'power2.out',
+          }, 2.6)
+          // fade out at 3.6s
+          .to(envelopeScreen, { opacity: 0, duration: 0.4, ease: 'power2.in' }, 3.6);
+    } else {
+        // CSS fallback
+        cssEnvelope.classList.add('opening');
+        cssEnvelope.classList.add('flap-opening');
+        setTimeout(() => { cssEnvelope.classList.add('extracting'); }, 900);
         setTimeout(() => {
-            envelopeScreen.style.display = 'none';
-            birthdayModal.classList.remove('hidden');
-        }, 400);
-    }, 3600);
+            envelopeFloat.classList.add('departing');
+            envelopeScreen.classList.add('transition-bg');
+        }, 2600);
+        setTimeout(() => {
+            envelopeScreen.classList.add('fade-out');
+            setTimeout(() => {
+                envelopeScreen.style.display = 'none';
+                birthdayModal.classList.remove('hidden');
+            }, 400);
+        }, 3600);
+    }
 }
 
+// 整个信封区域可点击
 envelopeFloat.addEventListener('click', openEnvelope);
+envelopeScreen.addEventListener('click', (e) => {
+    // 如果点击了浮动信封以外（信封包裹器）也触发
+    if (!envelopeFloat.contains(e.target) && e.target !== envelopeFloat) {
+        openEnvelope();
+    }
+});
 cssEnvelope.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
@@ -553,34 +735,46 @@ const quizDots = document.querySelectorAll('.quiz-dot');
 const quizData = [
     {
         question: 'Q1：小团最喜欢的人是谁？',
-        options: ['A. 一个叫阳的笨蛋', 'B. 上面那个名字', 'C. 当然是阳啦 💕']
+        options: ['A. 一个叫阳的笨蛋', 'B. 上面那个名字', 'C. 当然是阳啦 💕'],
+        correct: 2
     },
     {
         question: 'Q2：今天是什么特别的日子？',
-        options: ['A. 普通的一天', 'B. 有点特别的一天', 'C. 小团的生日呀 🎂']
+        options: ['A. 普通的一天', 'B. 有点特别的一天', 'C. 小团的生日呀 🎂'],
+        correct: 2
     },
     {
         question: 'Q3：新的一岁，阳希望小团怎样？',
-        options: ['A. 开心更多一点', 'B. 烦恼少一点', 'C. 天天都开心 ✨']
+        options: ['A. 开心更多一点', 'B. 烦恼少一点', 'C. 天天都开心 ✨'],
+        correct: 2
     },
     {
         question: 'Q4：阳最喜欢小团什么？',
-        options: ['A. 笑起来的样子', 'B. 每一个样子', 'C. 全部，包括没列出来的 🌸']
+        options: ['A. 笑起来的样子', 'B. 每一个样子', 'C. 全部，包括没列出来的 🌸'],
+        correct: 2
     },
     {
         question: 'Q5：这封信里藏着什么？',
-        options: ['A. 生日祝福', 'B. 很多想念', 'C. 想对你说的所有话 💝']
+        options: ['A. 生日祝福', 'B. 很多想念', 'C. 想对你说的所有话 💝'],
+        correct: 2
     }
 ];
 
 let currentQuestion = 0;
+let quizScore = 0;
+const quizHintTexts = ['再想想哦~', '差一点点，再看看~', '别急，慢慢想~', '嗯…换个思路试试~'];
 
 function showQuestion(index) {
     if (index >= quizData.length) {
         showQuizResult();
         return;
     }
-    quizDots.forEach((dot, i) => {
+    // 更新进度
+    const quizCount = document.querySelector('.quiz-count');
+    if (quizCount) quizCount.textContent = `第 ${index + 1} / 5 题`;
+    const quizDotsContainer = document.querySelector('.quiz-dots');
+    const dots = quizDotsContainer ? quizDotsContainer.querySelectorAll('.quiz-dot') : document.querySelectorAll('.quiz-dot');
+    dots.forEach((dot, i) => {
         dot.className = 'quiz-dot';
         if (i < index) dot.classList.add('done');
         if (i === index) dot.classList.add('active');
@@ -590,22 +784,73 @@ function showQuestion(index) {
     quizOptions.innerHTML = q.options.map(opt =>
         `<div class="quiz-option">${opt}</div>`
     ).join('');
-    quizOptions.querySelectorAll('.quiz-option').forEach(btn => {
-        btn.addEventListener('click', () => {
-            btn.classList.add('correct-flash');
-            setTimeout(() => {
-                currentQuestion++;
-                showQuestion(currentQuestion);
-            }, 600);
-        });
+    // 清除旧提示
+    const oldHint = quizOptions.parentElement.querySelector('.quiz-hint-text');
+    if (oldHint) oldHint.remove();
+    quizOptions.querySelectorAll('.quiz-option').forEach((btn, optIdx) => {
+        btn.addEventListener('click', () => handleAnswer(btn, optIdx, index));
     });
+}
+
+function handleAnswer(btn, chosenIdx, questionIdx) {
+    const q = quizData[questionIdx];
+    const isCorrect = chosenIdx === q.correct;
+    // 禁用所有选项
+    const allBtns = quizOptions.querySelectorAll('.quiz-option');
+    allBtns.forEach(b => b.style.pointerEvents = 'none');
+
+    if (isCorrect) {
+        quizScore++;
+        btn.classList.add('correct');
+        setTimeout(() => {
+            currentQuestion++;
+            showQuestion(currentQuestion);
+        }, 600);
+    } else {
+        btn.classList.add('wrong');
+        // 高亮正确答案
+        allBtns[q.correct].classList.add('correct');
+        // 显示温柔提示
+        const hint = document.createElement('p');
+        hint.className = 'quiz-hint-text';
+        hint.textContent = quizHintTexts[Math.floor(Math.random() * quizHintTexts.length)];
+        quizOptions.parentElement.appendChild(hint);
+        setTimeout(() => {
+            currentQuestion++;
+            showQuestion(currentQuestion);
+        }, 1200);
+    }
 }
 
 function showQuizResult() {
     quizQuestion.style.display = 'none';
     quizOptions.style.display = 'none';
+    // 清除旧提示
+    const oldHint = quizOptions.parentElement.querySelector('.quiz-hint-text');
+    if (oldHint) oldHint.remove();
     quizResult.classList.remove('hidden');
-    quizDots.forEach(d => { d.className = 'quiz-dot done'; });
+    const dotsContainer = document.querySelector('.quiz-dots');
+    const dots = dotsContainer ? dotsContainer.querySelectorAll('.quiz-dot') : document.querySelectorAll('.quiz-dot');
+    dots.forEach(d => { d.className = 'quiz-dot done'; });
+    // 更新进度文字
+    const quizCount = document.querySelector('.quiz-count');
+    if (quizCount) quizCount.textContent = '完成！';
+
+    // 差异化结果文案
+    const resultTitle = document.getElementById('quiz-result-title');
+    const resultSubtitle = document.getElementById('quiz-result-subtitle');
+    if (quizScore === 5) {
+        if (resultTitle) resultTitle.textContent = '我就知道你都懂 ❤';
+        // 满分 confetti 大爆发
+        fireConfetti({ particleCount: 120, spread: 100, origin: { y: 0.4, x: 0.5 } });
+        setTimeout(() => fireConfetti({ particleCount: 60, spread: 70, origin: { y: 0.3, x: 0.3 } }), 200);
+        setTimeout(() => fireConfetti({ particleCount: 60, spread: 70, origin: { y: 0.3, x: 0.7 } }), 400);
+    } else if (quizScore >= 3) {
+        if (resultTitle) resultTitle.textContent = '了解得差不多啦，慢慢来~';
+    } else {
+        if (resultTitle) resultTitle.textContent = '还要多多了解阳哦 😄';
+    }
+
     quizSection.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -637,6 +882,7 @@ function startQuiz() {
     quizResult.classList.add('hidden');
     initQuizParticles();
     currentQuestion = 0;
+    quizScore = 0;
     showQuestion(0);
 }
 
@@ -788,6 +1034,12 @@ document.getElementById('letter-continue-btn').addEventListener('click', () => {
         document.querySelector('.album-section').classList.add('visible');
         document.querySelector('.button-group').classList.add('visible');
         document.querySelector('.cake-entry').classList.add('visible');
+        // 刷新 Swiper 尺寸 & 初始化（若未初始化）
+        if (albumSwiper) {
+            albumSwiper.update();
+        } else {
+            initAlbumSwiper();
+        }
     });
 
     setTimeout(() => {
@@ -810,8 +1062,47 @@ const lightboxDots = document.getElementById('lightbox-dots');
 const photoCards = document.querySelectorAll('.photo-card');
 let lightboxIndex = 0;
 
+// Swiper 照片轮播初始化（Module 4）
+let albumSwiper = null;
+function initAlbumSwiper() {
+    if (albumSwiper) return;
+    const swiperEl = document.querySelector('.album-swiper');
+    if (!swiperEl || typeof Swiper === 'undefined') return;
+
+    albumSwiper = new Swiper(swiperEl, {
+        slidesPerView: 1,
+        centeredSlides: true,
+        spaceBetween: 16,
+        loop: false,
+        grabCursor: true,
+        keyboard: { enabled: true, onlyInViewport: true },
+        pagination: {
+            el: '.album-swiper .swiper-pagination',
+            clickable: true,
+        },
+        on: {
+            slideChange: function () {
+                updateAlbumDots(this.activeIndex);
+            },
+            click: function () {
+                openLightbox(this.activeIndex);
+            },
+        },
+    });
+    // 初始状态更新
+    updateAlbumDots(0);
+}
+
+function updateAlbumDots(index) {
+    // Swiper pagination 自动处理，保留函数签名兼容旧逻辑
+}
+
 function openLightbox(index) {
     lightboxIndex = index;
+    // 同步 Swiper
+    if (albumSwiper && albumSwiper.activeIndex !== index) {
+        albumSwiper.slideTo(index, 300);
+    }
     const card = photoCards[index];
     const img = card.querySelector('img');
     const svg = card.querySelector('.photo-placeholder');
@@ -841,6 +1132,10 @@ function closeLightbox() {
 function navigateLightbox(dir) {
     const total = photoCards.length;
     lightboxIndex = (lightboxIndex + dir + total) % total;
+    // 同步 Swiper
+    if (albumSwiper && albumSwiper.activeIndex !== lightboxIndex) {
+        albumSwiper.slideTo(lightboxIndex, 300);
+    }
     const card = photoCards[lightboxIndex];
     const img = card.querySelector('img');
     const svg = card.querySelector('.photo-placeholder');
@@ -885,7 +1180,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight') navigateLightbox(1);
 });
 
-// 触摸滑动
+// 灯箱触摸滑动
 let touchStartX = 0;
 let touchStartY = 0;
 photoLightbox.addEventListener('touchstart', (e) => {
@@ -969,7 +1264,7 @@ cakeIconBtn.addEventListener('click', async () => {
     }
 });
 
-// 许愿完成 → 纸鹤 → 吹蜡烛 → 庆祝流程
+// 许愿完成 → 星光祝福 → 吹蜡烛 → 庆祝流程
 function armCandleBlow() {
     let blowing = false;
     const targets = [cakeCanvasWrap, cakeScene?.renderer?.domElement].filter(Boolean);
@@ -990,7 +1285,10 @@ function armCandleBlow() {
         cleanup();
         cakeScene.hideHint();
         await cakeScene.blowCandles();
-        // 吹完蜡烛 → 庆祝 (showConfetti 已在 blowCandles 内部调用)
+        // 2D confetti 叠加庆祝
+        fireConfetti({ particleCount: 150, spread: 120, origin: { y: 0.4, x: 0.5 } });
+        setTimeout(() => fireConfetti({ particleCount: 80, spread: 90, origin: { y: 0.3, x: 0.3 } }), 300);
+        setTimeout(() => fireConfetti({ particleCount: 80, spread: 90, origin: { y: 0.3, x: 0.7 } }), 500);
         cakeScene.showHint('可以吃蛋糕啦 🎉');
         // 显示关闭按钮
         cakeCloseBtn.classList.remove('hidden');
@@ -1003,25 +1301,146 @@ function armCandleBlow() {
     });
 }
 
+function clearWishFireworkLayer() {
+    document.getElementById('wish-firework-layer')?.remove();
+}
+
+function playWishFireworkLayer() {
+    clearWishFireworkLayer();
+    if (!cakeSceneContainer) return;
+
+    const layer = document.createElement('div');
+    layer.id = 'wish-firework-layer';
+    layer.className = 'wish-firework-layer';
+    layer.setAttribute('aria-hidden', 'true');
+    layer.innerHTML = '<div class="wish-success-title">心想事成</div>';
+
+    const bursts = [
+        ['24%', '25%', '220px', '0.2s'],
+        ['76%', '24%', '230px', '0.35s'],
+        ['50%', '18%', '260px', '0.5s'],
+        ['34%', '38%', '180px', '0.7s'],
+        ['66%', '39%', '190px', '0.85s'],
+        ['18%', '48%', '160px', '1.05s'],
+        ['82%', '49%', '170px', '1.2s'],
+    ];
+
+    bursts.forEach(([x, y, size, delay], index) => {
+        const burst = document.createElement('span');
+        burst.className = 'wish-firework-burst';
+        burst.style.setProperty('--x', x);
+        burst.style.setProperty('--y', y);
+        burst.style.setProperty('--s', size);
+        burst.style.setProperty('--d', delay);
+        burst.style.setProperty('--a', `${index * 17}deg`);
+        layer.appendChild(burst);
+    });
+
+    cakeSceneContainer.appendChild(layer);
+    requestAnimationFrame(() => layer.classList.add('show'));
+    setTimeout(() => {
+        if (layer.parentElement) layer.remove();
+    }, 6800);
+}
+
+window.clearWishFireworkLayer = clearWishFireworkLayer;
+window.playWishFireworkLayer = playWishFireworkLayer;
+
 wishDoneBtn.addEventListener('click', () => {
-    wishOverlay.classList.add('hidden');
+    if (wishDoneBtn.classList.contains('done')) return;
+    // 生成金色星星 confetti
+    spawnWishStars();
+    // 按钮状态变更
+    wishDoneBtn.textContent = '✨ 愿望已封印';
+    wishDoneBtn.classList.add('done');
+    // 2.5s 后关闭面板
+    setTimeout(() => {
+        wishOverlay.classList.add('hidden');
+        wishDoneBtn.textContent = '我写好了';
+        wishDoneBtn.classList.remove('done');
+    }, 2500);
     if (!cakeScene) return;
     cakeScene.hideHint();
 
-    // 在 3D 场景中显示许愿纸
-    cakeScene.showWishPaper();
+    // 在 3D 场景中显示刚写下的许愿纸，随后化成星光和祝福烟花
+    cakeScene.showWishPaper(wishInput.value.trim());
 
-    // 1.5 秒后折成纸鹤飞走
     setTimeout(async () => {
-        await cakeScene.foldToCrane();
-        // 纸鹤飞走后 → 提示吹蜡烛
+        playWishFireworkLayer();
+        await cakeScene.releaseWish();
         cakeScene.showHint('吹蜡烛 🎈');
         armCandleBlow();
-    }, 1500);
+    }, 420);
 });
+
+// 愿望字数统计（Module 8）
+function initWishCharCount() {
+    if (!wishInput) return;
+    const countEl = document.querySelector('.wish-char-count');
+    if (!countEl) return;
+    wishInput.addEventListener('input', () => {
+        const len = wishInput.value.length;
+        const max = parseInt(wishInput.getAttribute('maxlength')) || 50;
+        countEl.textContent = `${len} / ${max}`;
+        if (len > max) {
+            countEl.classList.add('over');
+        } else {
+            countEl.classList.remove('over');
+        }
+    });
+}
+
+// ─── confetti 封装：canvas-confetti 优先，CSS fallback ───
+function fireConfetti(options = {}) {
+    if (typeof confetti !== 'undefined') {
+        const defaults = {
+            particleCount: 80,
+            spread: 80,
+            origin: { y: 0.6, x: 0.5 },
+            colors: ['#ff8fa3', '#ffd6e0', '#d63865', '#FFD700', '#FFA07A', '#FFB7C5', '#ffffff'],
+            ...options,
+        };
+        confetti(defaults);
+        // 第二波延迟散射
+        setTimeout(() => {
+            confetti({
+                ...defaults,
+                particleCount: Math.floor(defaults.particleCount * 0.6),
+                spread: defaults.spread * 1.4,
+                origin: { ...defaults.origin, y: defaults.origin.y - 0.05 },
+                colors: defaults.colors,
+            });
+        }, 150);
+    } else {
+        // CSS fallback：保持原有的 emoji 星星
+        spawnCSSStars(options && options.origin ? options.origin.x * window.innerWidth : window.innerWidth / 2,
+                      options && options.origin ? options.origin.y * window.innerHeight : window.innerHeight / 2);
+    }
+}
+
+function spawnCSSStars(centerX, centerY) {
+    const stars = ['⭐', '✨', '🌟', '💫', '⚡'];
+    for (let i = 0; i < 8; i++) {
+        const star = document.createElement('span');
+        star.className = 'wish-star';
+        star.textContent = stars[Math.floor(Math.random() * stars.length)];
+        star.style.left = `${centerX + (Math.random() - 0.5) * 200}px`;
+        star.style.top = `${centerY + (Math.random() - 0.5) * 100}px`;
+        star.style.animationDelay = `${i * 0.1}s`;
+        star.style.fontSize = `${Math.random() * 16 + 20}px`;
+        document.body.appendChild(star);
+        setTimeout(() => star.remove(), 2000);
+    }
+}
+
+// 愿望提交 confetti（Module 8）
+function spawnWishStars() {
+    fireConfetti({ particleCount: 60, spread: 60, origin: { y: 0.55, x: 0.5 } });
+}
 
 // 关闭蛋糕场景
 cakeCloseBtn.addEventListener('click', () => {
+    clearWishFireworkLayer();
     if (cakeScene) {
         cakeScene.dispose();
         cakeScene = null;
@@ -1045,6 +1464,7 @@ document.addEventListener('keydown', (e) => {
             setTimeout(() => { if (cakeScene) cakeScene.hideHint(); }, 2000);
         } else {
             if (cakeScene) {
+                clearWishFireworkLayer();
                 cakeScene.dispose();
                 cakeScene = null;
             }

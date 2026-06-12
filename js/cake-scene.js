@@ -1,13 +1,17 @@
 /**
  * cake-scene.js — 三维蛋糕场景模块 (自包含 ES Module)
- * 双层蛋糕 / 蜡烛火焰 / 星空流星 / 许愿纸折千纸鹤 / 吹蜡烛 / 彩带
+ * 双层蛋糕 / 粒子火焰 / 星空流星 / 许愿纸星光消散 / 吹蜡烛 / 彩带
+ * 后处理：UnrealBloomPass 泛光
  */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 
 const MODEL_PATHS = {
-  crane: 'assets/models/origami-crane.glb',
   cake: 'assets/models/birthday-cake.glb',
   table: 'assets/models/wood-table.glb',
 };
@@ -20,37 +24,35 @@ const circle = (n, r, y = 0) => Array.from({ length: n }, (_, i) => {
   const a = (i / n) * Math.PI * 2;
   return { x: Math.cos(a) * r, y, z: Math.sin(a) * r };
 });
-const bezier = (t, p0, p1, p2, p3) => {
-  const u = 1 - t, uu = u * u, tt = t * t;
-  return p0.clone().multiplyScalar(uu * u)
-    .add(p1.clone().multiplyScalar(3 * uu * t))
-    .add(p2.clone().multiplyScalar(3 * u * tt))
-    .add(p3.clone().multiplyScalar(tt * t));
-};
-
 // ═══ CakeScene ═══
 export class CakeScene {
   constructor() {
     this.scene = null;
     this.renderer = null;
     this.camera = null;
+    this.composer = null;
+    this.bloomPass = null;
+    this.bokehPass = null;
     this.controls = null;
     this.clock = new THREE.Clock();
     this.animId = null;
     this.flameGroup = [];
+    this.flameParticles = [];
     this.flamePhases = Array.from({ length: 20 }, () => Math.random() * Math.PI * 2);
     this._starLayers = null;
     this.shootingStars = [];
     this.nextShootingStar = 0;
     this.wishPaper = null;
     this.paperAnimState = null;
-    this.craneGroup = null;
-    this.craneModel = null;        // 缓存的千纸鹤 GLB 模型
-    this._loadingModel = false;
-    this.transformationParticles = null;
-    this.flashSphere = null;
+    this.wishSparkles = null;
+    this.wishFireworks = null;
+    this.wishTextSprite = null;
+    this.wishTextGlow = null;
     this.confettiParticles = [];
     this.container = null;
+    this._flameTex = null;
+    this._smokeTex = null;
+    this._glowTex = null;
   }
 
   // ─── init ───
@@ -85,11 +87,78 @@ export class CakeScene {
     this.controls.minPolarAngle = 0.3;
     this.controls.update();
 
+    this._genTextures();
+    this._setupPostProcessing(w, h);
     this._setupLights();
     this._createTable();
     this._createCake();
     this._createCandles();
     this._createStarfield();
+  }
+
+  // ─── 生成火焰/烟雾/光晕纹理 ───
+  _genTextures() {
+    // ─ 火焰纹理
+    const fc = document.createElement('canvas'); fc.width = fc.height = 128;
+    const fctx = fc.getContext('2d');
+    const fgrad = fctx.createRadialGradient(64, 90, 4, 64, 50, 56);
+    fgrad.addColorStop(0, 'rgba(255,255,255,1)');
+    fgrad.addColorStop(0.08, 'rgba(255,255,200,1)');
+    fgrad.addColorStop(0.2, 'rgba(255,180,40,0.95)');
+    fgrad.addColorStop(0.45, 'rgba(255,100,20,0.7)');
+    fgrad.addColorStop(0.7, 'rgba(255,40,0,0.25)');
+    fgrad.addColorStop(1, 'rgba(0,0,0,0)');
+    fctx.fillStyle = fgrad; fctx.fillRect(0, 0, 128, 128);
+    this._flameTex = new THREE.CanvasTexture(fc);
+    this._flameTex.needsUpdate = true;
+
+    // ─ 烟雾纹理
+    const sc = document.createElement('canvas'); sc.width = sc.height = 64;
+    const sctx = sc.getContext('2d');
+    const sgrad = sctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    sgrad.addColorStop(0, 'rgba(220,220,220,0.6)');
+    sgrad.addColorStop(0.25, 'rgba(200,200,200,0.35)');
+    sgrad.addColorStop(0.55, 'rgba(170,170,170,0.1)');
+    sgrad.addColorStop(1, 'rgba(0,0,0,0)');
+    sctx.fillStyle = sgrad; sctx.fillRect(0, 0, 64, 64);
+    this._smokeTex = new THREE.CanvasTexture(sc);
+    this._smokeTex.needsUpdate = true;
+
+    // ─ 柔光纹理
+    const gc = document.createElement('canvas'); gc.width = gc.height = 64;
+    const gctx = gc.getContext('2d');
+    const ggrad = gctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    ggrad.addColorStop(0, 'rgba(255,200,100,0.9)');
+    ggrad.addColorStop(0.15, 'rgba(255,160,40,0.6)');
+    ggrad.addColorStop(0.4, 'rgba(255,100,20,0.15)');
+    ggrad.addColorStop(1, 'rgba(0,0,0,0)');
+    gctx.fillStyle = ggrad; gctx.fillRect(0, 0, 64, 64);
+    this._glowTex = new THREE.CanvasTexture(gc);
+    this._glowTex.needsUpdate = true;
+  }
+
+  // ─── 后处理：泛光 + 景深 ───
+  _setupPostProcessing(w, h) {
+    this.composer = new EffectComposer(this.renderer);
+    const renderPass = new RenderPass(this.scene, this.camera);
+    this.composer.addPass(renderPass);
+
+    // Bloom 泛光
+    this.bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(w, h),
+      0.65,   // strength
+      0.4,    // radius
+      0.85    // threshold
+    );
+    this.composer.addPass(this.bloomPass);
+
+    // Bokeh 景深：对焦蛋糕中心 (0, 1.2, 0)，距离约 3.5
+    this.bokehPass = new BokehPass(this.scene, this.camera, {
+      focus: 3.5,
+      aperture: 0.0008,
+      maxBlur: 0.015,
+    });
+    this.composer.addPass(this.bokehPass);
   }
 
   _setupLights() {
@@ -172,17 +241,6 @@ export class CakeScene {
     );
   }
 
-  _cloneModelWithMaterials(root) {
-    const clone = root.clone(true);
-    clone.traverse(ch => {
-      if (!ch.material) return;
-      ch.material = Array.isArray(ch.material)
-        ? ch.material.map(m => m.clone())
-        : ch.material.clone();
-    });
-    return clone;
-  }
-
   // ─── 桌子 ───
   _createTable() {
     this.tableGroup = new THREE.Group();
@@ -253,39 +311,73 @@ export class CakeScene {
 
   // ─── 蜡烛 ───
   _createCandles() {
-    const cm = new THREE.MeshStandardMaterial({ color: '#FFF8F0', roughness: 0.5, metalness: 0.02 });
+    const cm = new THREE.MeshPhysicalMaterial({
+      color: '#FFF8F0', roughness: 0.35, metalness: 0.01,
+      clearcoat: 0.1, clearcoatRoughness: 0.4,
+      sheen: 0.3, sheenRoughness: 0.5, sheenColor: new THREE.Color('#ffe4d0'),
+    });
     const wm = new THREE.MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.9 });
     const cGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.25, 16);
     const hGeo = new THREE.CylinderGeometry(0.04, 0.035, 0.04, 16);
     const wGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.04, 8);
+
+    const spriteMat = new THREE.SpriteMaterial({
+      map: this._flameTex,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: true,
+      transparent: true,
+      opacity: 0.9,
+    });
+
+    const glowMat = new THREE.SpriteMaterial({
+      map: this._glowTex,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: true,
+      transparent: true,
+      opacity: 0.5,
+    });
+
     [...circle(12, 0.76, 0.42), ...circle(8, 0.42, 0.72)].forEach(pos => {
       const grp = new THREE.Group();
       grp.position.set(pos.x, pos.y, pos.z);
       const c = new THREE.Mesh(cGeo, cm); c.position.y = 0.125; c.castShadow = true; grp.add(c);
       const h = new THREE.Mesh(hGeo, cm); h.position.y = 0.02; grp.add(h);
       const w = new THREE.Mesh(wGeo, wm); w.position.y = 0.27; grp.add(w);
-      const fg = this._createFlame(); fg.position.y = 0.29; grp.add(fg);
-      const pl = new THREE.PointLight('#ff9933', 0.5, 0.5);
-      pl.position.copy(fg.position); grp.add(pl);
-      this.flameGroup.push({ group: fg, light: pl, parentGroup: grp });
+
+      // 粒子火焰：主焰 + 副焰 3 层 sprite
+      const fg = new THREE.Group();
+      fg.position.y = 0.30;
+      const particles = [];
+      // 主焰（较大，中心偏下）
+      for (let i = 0; i < 5; i++) {
+        const s = new THREE.Sprite(spriteMat.clone());
+        s.material.opacity = 0.6 + Math.random() * 0.35;
+        const size = 0.04 + Math.random() * 0.05;
+        s.scale.set(size, size * 1.4, 1);
+        s.position.y = 0.01 + Math.random() * 0.045;
+        s.position.x = (Math.random() - 0.5) * 0.015;
+        s.position.z = (Math.random() - 0.5) * 0.015;
+        s.userData = { baseY: s.position.y, baseS: size, phase: Math.random() * Math.PI * 2, speed: 6 + Math.random() * 8 };
+        fg.add(s);
+        particles.push(s);
+      }
+      // 光晕 sprite
+      const gl = new THREE.Sprite(glowMat.clone());
+      gl.scale.set(0.12, 0.12, 1);
+      gl.position.y = 0.03;
+      gl.userData = { baseS: 0.12 };
+      fg.add(gl);
+      particles.push(gl);
+
+      grp.add(fg);
+      const pl = new THREE.PointLight('#ff9933', 1.2, 0.8, 1.5);
+      pl.position.y = 0.32; grp.add(pl);
+
+      this.flameGroup.push({ group: fg, light: pl, parentGroup: grp, particles });
       (this.cakeGroup || this.scene).add(grp);
     });
-  }
-
-  _createFlame() {
-    const g = new THREE.Group();
-    const i = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.08, 8, 1),
-      new THREE.MeshBasicMaterial({ color: '#ffaa00' }));
-    i.position.y = 0.04; g.add(i);
-    const t = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8),
-      new THREE.MeshBasicMaterial({ color: '#ffdd44' }));
-    t.position.y = 0.075; g.add(t);
-    const gl = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16),
-      new THREE.MeshBasicMaterial({ color: '#ff7722', transparent: true, opacity: 0.35,
-        blending: THREE.AdditiveBlending, depthWrite: false }));
-    gl.position.y = 0.04; g.add(gl);
-    g.userData = { inner: i, tip: t, glow: gl };
-    return g;
   }
 
   // ─── 星空 (「你的名字」风格) ───
@@ -538,24 +630,47 @@ export class CakeScene {
       const t = performance.now() / 1000;
       this.controls.update();
       this._animFlames(t);
+      this._spawnFlameSparkles(t);
+      this._animFlameSparkles(t, dt);
       this._animStars(t, dt);
       this._animPaper(t);
-      this._animCrane(t);
+      this._animWishEffects(t, dt);
       this._animConfetti(t, dt);
-      this.renderer.render(this.scene, this.camera);
+      if (this.composer) {
+        this.composer.render();
+      } else {
+        this.renderer.render(this.scene, this.camera);
+      }
     };
     loop();
   }
 
   _animFlames(t) {
     for (let i = 0; i < this.flameGroup.length; i++) {
-      const { group, light } = this.flameGroup[i];
+      const { group, light, particles } = this.flameGroup[i];
       if (!group || !group.parent) continue;
-      const p = this.flamePhases[i];
-      const f = 1 + Math.sin(t * 8 + p) * 0.12 + Math.sin(t * 13 + p * 1.7) * 0.08 + Math.sin(t * 19 + p * 2.3) * 0.05;
-      const s = Math.max(0.3, f);
-      group.scale.setScalar(s);
-      if (light) light.intensity = 0.5 * s;
+      if (!particles) continue;
+
+      const basePhase = this.flamePhases[i];
+      const wind = Math.sin(t * 0.7 + basePhase) * 0.004;
+
+      for (let j = 0; j < particles.length; j++) {
+        const p = particles[j];
+        if (!p || !p.userData || !p.userData.baseY) continue;
+        const { baseY, baseS, phase, speed } = p.userData;
+        // 呼吸抖动：上下浮动 + 水平微摆
+        const breathe = 1 + Math.sin(t * speed + phase) * 0.18 + Math.sin(t * speed * 1.7 + phase) * 0.1;
+        const sizeX = baseS * breathe;
+        const sizeY = baseS * 1.4 * breathe;
+        p.scale.set(Math.max(0.01, sizeX), Math.max(0.01, sizeY), 1);
+        p.position.y = baseY + Math.sin(t * speed * 0.7 + phase) * 0.008;
+        p.position.x = (p.userData.baseX ?? p.position.x) + wind * breathe;
+        p.material.opacity = Math.min(0.9, 0.45 + breathe * 0.3);
+      }
+      if (light) {
+        const ripple = 1 + Math.sin(t * 9 + basePhase) * 0.15 + Math.sin(t * 15 + basePhase * 2) * 0.08;
+        light.intensity = 0.9 * Math.max(0.3, ripple);
+      }
     }
   }
 
@@ -613,260 +728,403 @@ export class CakeScene {
     }
   }
 
-  // ═══ 许愿纸 → 千纸鹤魔法变身 ═══
+  // ═══ 许愿纸 → 星光消散与烟花祝福 ═══
 
-  // ─── 显示许愿纸（简洁平面，无细分）───
-  showWishPaper() {
+  _createWishPaperTexture(wishText = '') {
+    const canvas = document.createElement('canvas');
+    canvas.width = 768;
+    canvas.height = 960;
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, '#fffdf7');
+    grad.addColorStop(1, '#fff2de');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = 'rgba(244, 160, 176, 0.26)';
+    ctx.lineWidth = 3;
+    for (let y = 210; y < 780; y += 76) {
+      ctx.beginPath();
+      ctx.moveTo(92, y);
+      ctx.lineTo(676, y);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = 'rgba(244, 160, 176, 0.16)';
+    ctx.beginPath();
+    ctx.arc(384, 132, 66, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#5c3d2e';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '700 64px "Ma Shan Zheng", "KaiTi", serif';
+    ctx.fillText('我的愿望', 384, 132);
+
+    const text = (wishText || '愿你想要的温柔、幸运和快乐，都慢慢来到身边。').trim().slice(0, 120);
+    const lines = [];
+    let line = '';
+    ctx.font = '46px "Ma Shan Zheng", "KaiTi", serif';
+    for (const ch of text) {
+      const next = line + ch;
+      if (ctx.measureText(next).width > 560 && line) {
+        lines.push(line);
+        line = ch;
+      } else {
+        line = next;
+      }
+      if (lines.length >= 6) break;
+    }
+    if (line && lines.length < 7) lines.push(line);
+    lines.slice(0, 7).forEach((item, i) => {
+      ctx.fillText(item, 384, 270 + i * 76);
+    });
+
+    ctx.font = '42px "Ma Shan Zheng", cursive';
+    ctx.fillStyle = 'rgba(92, 61, 46, 0.78)';
+    ctx.fillText('小团生日快乐', 384, 850);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 4;
+    return texture;
+  }
+
+  // ─── 显示许愿纸（把弹窗里的文字做成纸张纹理）───
+  showWishPaper(wishText = '') {
     if (this.wishPaper) return;
-    const geo = new THREE.PlaneGeometry(2.0, 2.5, 1, 1);
+    const geo = new THREE.PlaneGeometry(1.75, 2.2, 1, 1);
+    const paperTexture = this._createWishPaperTexture(wishText);
     const mat = new THREE.MeshStandardMaterial({
-      color: '#FFF8E7', roughness: 0.55, metalness: 0.02,
-      side: THREE.DoubleSide, emissive: '#FFF8E7', emissiveIntensity: 0.08,
-      transparent: true, opacity: 1.0,
+      color: '#fff9f0',
+      map: paperTexture,
+      roughness: 0.58,
+      metalness: 0.02,
+      side: THREE.DoubleSide,
+      emissive: '#fff0d0',
+      emissiveIntensity: 0.08,
+      transparent: true,
+      opacity: 1.0,
+      depthWrite: false,
     });
     this.wishPaper = new THREE.Mesh(geo, mat);
-    this.wishPaper.position.set(0, 1.8, 2.2);
-    this.wishPaper.rotation.x = -0.3;
+    this.wishPaper.position.set(0, 1.85, 2.25);
+    this.wishPaper.rotation.x = -0.32;
     this.wishPaper.castShadow = this.wishPaper.receiveShadow = true;
+    this.wishPaper.renderOrder = 4;
     this.scene.add(this.wishPaper);
-    this.paperAnimState = { phase: 'floating', startTime: 0, baseY: 1.8 };
+    this.paperAnimState = { phase: 'floating', startTime: performance.now() / 1000, baseY: 1.85 };
   }
 
   _animPaper(t) {
     if (!this.wishPaper || !this.paperAnimState) return;
     const s = this.paperAnimState;
     if (s.phase === 'floating') {
-      // 纸张漂浮微动
       this.wishPaper.position.y = s.baseY + Math.sin(t * 1.5) * 0.08;
       this.wishPaper.rotation.z = Math.sin(t * 0.7) * 0.05;
       return;
     }
-    if (s.phase === 'transforming') this._animTransform(t, s);
+    if (s.phase === 'releasing') this._animWishRelease(t, s);
   }
 
-  // ─── 魔法变身动画：发光 → 爆发 → 揭示 (总计 3.5s) ───
-  _animTransform(t, s) {
+  releaseWish() {
+    if (!this.wishPaper) this.showWishPaper();
+    if (!this.wishPaper || !this.paperAnimState) return Promise.resolve();
+    if (this.paperAnimState.phase === 'settled') return Promise.resolve();
+    if (this.paperAnimState._releasePromise) return this.paperAnimState._releasePromise;
+
+    const s = this.paperAnimState;
+    const start = this.wishPaper.position.clone();
+    const end = new THREE.Vector3(0, 1.52, 0.22);
+    const startedAt = performance.now() / 1000;
+
+    this._cleanupWishEffects();
+    this._createWishSparkles(start, startedAt);
+    this._createWishFireworks(startedAt);
+    this._createWishText(startedAt);
+
+    s.phase = 'releasing';
+    s.startTime = startedAt;
+    s._paperStart = start;
+    s._paperEnd = end;
+    s._releasePromise = new Promise(resolve => { s._resolve = resolve; });
+    return s._releasePromise;
+  }
+
+  _animWishRelease(t, s) {
     const elapsed = t - s.startTime;
-    if (elapsed >= 3.5) {
-      // 变身完成 → 千纸鹤接手悬停
-      s.phase = 'pausing'; s.startTime = t;
-      this.wishPaper.visible = false;
-      if (this.flashSphere) this.flashSphere.visible = false;
-      return;
-    }
-    // 阶段1：发光 (0~1.5s) — 纸发光 + 粒子螺旋汇聚
-    if (elapsed < 1.5) {
-      const p = eio(elapsed / 1.5);
-      this.wishPaper.material.emissiveIntensity = 0.08 + p * 0.72;
-      if (this.transformationParticles) {
-        this.transformationParticles.children.forEach((pt, i) => {
-          const a = pt.userData.baseAngle + t * 3 * (1 + i * 0.01);
-          const r = pt.userData.baseRadius * (1 - p * 0.5);
-          pt.position.set(Math.cos(a) * r, pt.userData.baseY + Math.sin(a * 0.3) * 0.15 * p, Math.sin(a) * r);
-          pt.material.opacity = 0.3 + p * 0.6;
-        });
-      }
-      return;
-    }
-    // 阶段2：爆发 (1.5~2.5s) — 闪光球膨胀 + 纸淡出 + 粒子炸开
-    if (elapsed < 2.5) {
-      const p = (elapsed - 1.5) / 1.0;
-      this.wishPaper.material.opacity = 1 - eoc(p);
-      if (this.flashSphere) {
-        this.flashSphere.visible = true;
-        const fSub = Math.min(p, 0.5) * 2;
-        this.flashSphere.scale.setScalar(eio(fSub) * 3);
-        this.flashSphere.material.opacity = Math.max(0, 0.8 * (1 - p));
-      }
-      if (this.transformationParticles) {
-        this.transformationParticles.children.forEach(pt => {
-          const dir = pt.position.clone().normalize();
-          pt.position.addScaledVector(dir, p * 4 * 0.016);
-          pt.material.opacity = Math.max(0, 0.9 - p * 0.6);
-        });
-      }
-      return;
-    }
-    // 阶段3：揭示 (2.5~3.5s) — 千纸鹤从 0 放大显现 + 粒子消退
-    const p = eoc((elapsed - 2.5) / 1.0);
-    if (this.craneGroup) {
-      this.craneGroup.scale.setScalar(s._craneTargetScale * p);
-      this.craneGroup.traverse(ch => {
-        if (ch.material?.transparent) ch.material.opacity = p;
-      });
-    }
-    if (this.flashSphere) this.flashSphere.visible = false;
-    if (this.transformationParticles) {
-      this.transformationParticles.children.forEach(pt => { pt.material.opacity = Math.max(0, 0.4 * (1 - p)); });
-    }
+    const travel = Math.min(elapsed / 1.35, 1);
+    const travelEase = eoc(travel);
+    const fade = Math.min(Math.max((elapsed - 0.85) / 1.35, 0), 1);
+
+    this.wishPaper.position.lerpVectors(s._paperStart, s._paperEnd, travelEase);
+    this.wishPaper.position.y += Math.sin(t * 2.5) * 0.025 * (1 - travel);
+    this.wishPaper.rotation.x = -0.32 + travelEase * 0.42;
+    this.wishPaper.rotation.z = Math.sin(t * 1.1) * 0.055 * (1 - travel);
+    this.wishPaper.scale.setScalar(1 - travelEase * 0.18 + Math.sin(fade * Math.PI) * 0.05);
+    this.wishPaper.material.emissiveIntensity = 0.08 + Math.min(elapsed / 1.6, 1) * 0.72;
+    this.wishPaper.material.opacity = Math.max(0, 1 - eio(fade));
+
+    if (elapsed >= 2.25) this.wishPaper.visible = false;
+    if (elapsed < 4.8) return;
+
+    s.phase = 'settled';
+    const resolve = s._resolve;
+    s._resolve = null;
+    s._releasePromise = null;
+    if (resolve) resolve();
   }
 
-  // ─── 加载千纸鹤 GLB 模型（缓存单例，仅加载一次）───
-  _loadCraneModel() {
-    if (this.craneModel) return Promise.resolve(this.craneModel);
-    if (this._loadingModel) return this._loadingModel;
-    this._loadingModel = new Promise((resolve) => {
-      const loader = new GLTFLoader();
-      loader.load(
-        MODEL_PATHS.crane,
-        (gltf) => {
-          this.craneModel = this._prepareLoadedModel(gltf.scene);
-          this._loadingModel = null;
-          resolve(this.craneModel);
-        },
-        undefined,
-        () => {
-          // 加载失败 → 降级为简易纸飞机
-          const g = new THREE.Group();
-          const bm = new THREE.MeshStandardMaterial({ color: '#FFF8E7', roughness: 0.5, side: THREE.DoubleSide });
-          const body = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.7, 4), bm);
-          body.rotation.x = Math.PI / 2; body.castShadow = body.receiveShadow = true; g.add(body);
-          const wing = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.35), bm);
-          wing.position.y = 0.04; wing.castShadow = wing.receiveShadow = true; g.add(wing);
-          this.craneModel = g; this._loadingModel = null; resolve(g);
-        }
-      );
-    });
-    return this._loadingModel;
-  }
+  _createWishSparkles(origin, startedAt) {
+    const colors = ['#fff9f0', '#fff2a8', '#ffb7c5', '#ffd6df', '#ffffff'];
+    this.wishSparkles = new THREE.Group();
+    this.wishSparkles.userData = { startedAt };
 
-  // ─── 创建变身粒子（65个金/白/粉色光点，螺旋环绕）───
-  _createTransformParticles(center, baseY) {
-    if (this.transformationParticles) {
-      this.scene.remove(this.transformationParticles);
-      this.transformationParticles.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); });
-    }
-    const colors = ['#FFD700', '#FFF8DC', '#FFB6C1'];
-    this.transformationParticles = new THREE.Group();
-    for (let i = 0; i < 65; i++) {
-      const geo = new THREE.SphereGeometry(0.03, 8, 8);
+    for (let i = 0; i < 145; i++) {
+      const geo = new THREE.SphereGeometry(rand(0.012, 0.034), 7, 7);
       const mat = new THREE.MeshBasicMaterial({
         color: colors[Math.floor(Math.random() * colors.length)],
-        transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthTest: false,
+        depthWrite: false,
       });
       const pt = new THREE.Mesh(geo, mat);
-      const angle = Math.random() * Math.PI * 2;
-      const radius = rand(0.8, 1.6);
-      pt.userData = { baseAngle: angle, baseRadius: radius, baseY: baseY + rand(-0.4, 0.4) };
-      pt.position.set(center.x + Math.cos(angle) * radius, pt.userData.baseY, center.z + Math.sin(angle) * radius);
-      this.transformationParticles.add(pt);
+      const angle = rand(0, Math.PI * 2);
+      const velocity = new THREE.Vector3(
+        Math.cos(angle) * rand(0.25, 1.0),
+        rand(0.15, 1.05),
+        -rand(0.45, 1.8) + Math.sin(angle) * 0.22,
+      );
+      pt.userData = {
+        origin: origin.clone().add(new THREE.Vector3(rand(-0.55, 0.55), rand(-0.76, 0.76), rand(-0.03, 0.03))),
+        velocity,
+        delay: rand(0.48, 1.55),
+        maxLife: rand(2.2, 4.0),
+        phase: rand(0, Math.PI * 2),
+        baseScale: rand(0.65, 1.8),
+      };
+      pt.position.copy(pt.userData.origin);
+      pt.renderOrder = 5;
+      this.wishSparkles.add(pt);
     }
-    this.scene.add(this.transformationParticles);
+    this.scene.add(this.wishSparkles);
   }
 
-  // ─── foldToCrane：启动魔法变身，返回 Promise ───
-  foldToCrane() {
-    return new Promise((resolve) => {
-      if (!this.wishPaper) { resolve(); return; }
-      const s = this.paperAnimState;
-      const paperPos = this.wishPaper.position.clone();
-      const paperY = paperPos.y;
-      s._resolve = resolve;
-      this._loadCraneModel().then(() => {
-        // 克隆千纸鹤模型，定位到纸张位置
-        if (this.craneModel) {
-          this.craneGroup = this._cloneModelWithMaterials(this.craneModel);
-          this.craneGroup.position.copy(paperPos);
-          this.craneGroup.rotation.set(0, 0, 0);
-          this.craneGroup.scale.setScalar(0);
-          // 自动计算目标缩放：翼展约 1.35 单位，避免飞行时贴到镜头顶部
-          const box = new THREE.Box3().setFromObject(this.craneGroup);
-          const size = new THREE.Vector3(); box.getSize(size);
-          const maxDim = Math.max(size.x, size.y, size.z);
-          s._craneTargetScale = maxDim > 0 ? 1.35 / maxDim : 1.2;
-          // 金色发光
-          this.craneGroup.traverse(ch => {
-            if (ch.material) {
-              const mats = Array.isArray(ch.material) ? ch.material : [ch.material];
-              mats.forEach(m => {
-                m.emissive = new THREE.Color('#FFD700');
-                m.emissiveIntensity = 0.25;
-                m.transparent = true; m.opacity = 0;
-              });
-            }
-          });
-          this.scene.add(this.craneGroup);
-        }
-        // 变身粒子 + 闪光球
-        this._createTransformParticles(paperPos, paperY);
-        const fGeo = new THREE.SphereGeometry(2, 32, 32);
-        const fMat = new THREE.MeshBasicMaterial({
-          color: '#FFFFFF', transparent: true, opacity: 0,
-          blending: THREE.AdditiveBlending, depthWrite: false,
+  _createWishFireworks(startedAt) {
+    const colors = ['#fff6b7', '#ffb7c5', '#ffffff', '#ffd6e0', '#ffcf8a'];
+    this.wishFireworks = new THREE.Group();
+    this.wishFireworks.userData = { startedAt };
+    const burstCenters = [
+      new THREE.Vector3(-1.45, 3.35, -2.35),
+      new THREE.Vector3(1.45, 3.32, -2.35),
+      new THREE.Vector3(0, 3.82, -2.55),
+      new THREE.Vector3(-0.82, 2.78, -2.2),
+      new THREE.Vector3(0.82, 2.82, -2.2),
+      new THREE.Vector3(-1.82, 3.86, -2.7),
+      new THREE.Vector3(1.82, 3.85, -2.7),
+    ];
+
+    for (let burst = 0; burst < burstCenters.length; burst++) {
+      const center = burstCenters[burst].clone().add(new THREE.Vector3(rand(-0.08, 0.08), rand(-0.08, 0.08), 0));
+      const delay = 1.32 + burst * 0.16 + rand(-0.05, 0.08);
+      const count = burst === 3 ? 78 : 62;
+      const ringColor = colors[Math.floor(Math.random() * colors.length)];
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.32, 0.38, 96), new THREE.MeshBasicMaterial({
+        color: ringColor,
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide,
+        depthTest: false,
+        depthWrite: false,
+      }));
+      ring.position.copy(center);
+      ring.scale.setScalar(0.1);
+      ring.renderOrder = 8;
+      ring.userData = {
+        kind: 'fireworkRing',
+        delay,
+        maxLife: 1.9,
+        baseScale: rand(1.55, 2.35),
+        phase: rand(0, Math.PI * 2),
+      };
+      this.wishFireworks.add(ring);
+
+      for (let i = 0; i < count; i++) {
+        const geo = new THREE.SphereGeometry(rand(0.018, 0.052), 7, 7);
+        const mat = new THREE.MeshBasicMaterial({
+          color: colors[Math.floor(Math.random() * colors.length)],
+          transparent: true,
+          opacity: 0,
+          blending: THREE.AdditiveBlending,
+          depthTest: false,
+          depthWrite: false,
         });
-        this.flashSphere = new THREE.Mesh(fGeo, fMat);
-        this.flashSphere.position.copy(paperPos);
-        this.flashSphere.scale.setScalar(0);
-        this.flashSphere.visible = false;
-        this.scene.add(this.flashSphere);
-        // 启动动画
-        s.phase = 'transforming';
-        s.startTime = performance.now() / 1000;
-      });
-    });
-  }
-
-  // ─── 千纸鹤悬停 & 飞行（GLB 模型）───
-  _animCrane(t) {
-    if (!this.craneGroup || !this.paperAnimState) return;
-    const s = this.paperAnimState;
-    // 悬停（变身完成后静置 2s，温柔浮动）
-    if (s.phase === 'pausing') {
-      const baseY = s._craneBaseY ?? (s._craneBaseY = this.craneGroup.position.y);
-      this.craneGroup.position.y = baseY + Math.sin(t * 1.5) * 0.06;
-      this.craneGroup.rotation.z = Math.sin(t * 0.6) * 0.04;
-      if (t - s.startTime >= 2.0) {
-        s.phase = 'flying'; s.startTime = t;
-        const cp = this.craneGroup.position.clone();
-        s.flyPath = {
-          start: cp.clone(),
-          cp1: new THREE.Vector3(cp.x + 1.2, cp.y + 2.5, cp.z + 1.2),
-          cp2: new THREE.Vector3(cp.x + 2.5, cp.y + 4.5, cp.z - 1.8),
-          end: new THREE.Vector3(cp.x + 4.5, cp.y + 7.0, cp.z - 5.5),
+        const pt = new THREE.Mesh(geo, mat);
+        const a = rand(0, Math.PI * 2);
+        const upward = rand(-0.38, 0.68);
+        const dir = new THREE.Vector3(Math.cos(a), upward, Math.sin(a) * 0.55).normalize();
+        pt.userData = {
+          center,
+          velocity: dir.multiplyScalar(rand(0.9, 1.85)),
+          delay,
+          maxLife: rand(1.45, 2.15),
+          phase: rand(0, Math.PI * 2),
+          baseScale: rand(0.8, 2.0),
         };
+        pt.position.copy(center);
+        pt.renderOrder = 4;
+        this.wishFireworks.add(pt);
       }
-      return;
     }
-    if (s.phase !== 'flying') return;
-    // 飞行 (5s 贝塞尔路径)
-    const elapsed = t - s.startTime;
-    const fp = Math.min(elapsed / 5.0, 1.0);
-    const ep = eio(fp);
-    const pos = bezier(ep, s.flyPath.start, s.flyPath.cp1, s.flyPath.cp2, s.flyPath.end);
-    this.craneGroup.position.copy(pos);
-    // 面朝飞行方向 + 微妙倾斜（无翅膀扑动，纸鹤是折纸模型）
-    const nEp = Math.min(ep + 0.02, 1.0);
-    const lookPt = bezier(nEp, s.flyPath.start, s.flyPath.cp1, s.flyPath.cp2, s.flyPath.end);
-    this.craneGroup.lookAt(lookPt);
-    this.craneGroup.rotation.z = Math.sin(fp * Math.PI * 0.7) * 0.25;
-    // 逐渐缩小
-    const ts = s._craneTargetScale || 1.5;
-    this.craneGroup.scale.setScalar(ts * (1 - fp * 0.9));
-    // 末尾 20% 淡出
-    if (fp > 0.8) {
-      const fade = 1 - (fp - 0.8) / 0.2;
-      this.craneGroup.traverse(ch => {
-        if (ch.material?.transparent) ch.material.opacity = Math.max(0, fade);
+    this.scene.add(this.wishFireworks);
+  }
+
+  _createWishTextTexture(glow = false) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 384;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '700 162px "Ma Shan Zheng", "KaiTi", serif';
+    ctx.shadowColor = glow ? 'rgba(255, 183, 197, 0.72)' : 'rgba(255, 217, 147, 0.46)';
+    ctx.shadowBlur = glow ? 58 : 12;
+    ctx.lineWidth = glow ? 4 : 8;
+    ctx.strokeStyle = glow ? 'rgba(255, 183, 197, 0.34)' : 'rgba(173, 70, 98, 0.92)';
+    ctx.fillStyle = glow ? 'rgba(255, 226, 234, 0.48)' : '#fff3e8';
+    ctx.strokeText('心想事成', 512, 190);
+    ctx.fillText('心想事成', 512, 190);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 4;
+    return texture;
+  }
+
+  _createWishText(startedAt) {
+    const glowMat = new THREE.SpriteMaterial({
+      map: this._createWishTextTexture(true),
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthTest: false,
+      depthWrite: false,
+    });
+    this.wishTextGlow = new THREE.Sprite(glowMat);
+    this.wishTextGlow.position.set(0, 3.02, -2.75);
+    this.wishTextGlow.scale.set(3.0, 0.95, 1);
+    this.wishTextGlow.renderOrder = 5;
+    this.wishTextGlow.userData = { startedAt };
+    this.scene.add(this.wishTextGlow);
+
+    const textMat = new THREE.SpriteMaterial({
+      map: this._createWishTextTexture(false),
+      transparent: true,
+      opacity: 0,
+      depthTest: false,
+      depthWrite: false,
+    });
+    this.wishTextSprite = new THREE.Sprite(textMat);
+    this.wishTextSprite.position.set(0, 3.02, -2.72);
+    this.wishTextSprite.scale.set(2.55, 0.78, 1);
+    this.wishTextSprite.renderOrder = 6;
+    this.wishTextSprite.userData = { startedAt };
+    this.scene.add(this.wishTextSprite);
+  }
+
+  _animWishEffects(t) {
+    if (this.wishSparkles) {
+      const elapsed = t - this.wishSparkles.userData.startedAt;
+      this.wishSparkles.children.forEach(pt => {
+        const age = elapsed - pt.userData.delay;
+        if (age <= 0) {
+          pt.material.opacity = 0;
+          return;
+        }
+        const p = Math.min(age / pt.userData.maxLife, 1);
+        const drift = eoc(p);
+        pt.position.copy(pt.userData.origin)
+          .addScaledVector(pt.userData.velocity, drift * 2.8);
+        pt.position.x += Math.sin(age * 4.1 + pt.userData.phase) * 0.09 * (1 - p);
+        pt.position.y += Math.sin(age * 3.4 + pt.userData.phase) * 0.06;
+        pt.material.opacity = Math.max(0, Math.sin(p * Math.PI) * 0.9);
+        const twinkle = 0.62 + Math.sin(t * 9.5 + pt.userData.phase) * 0.28;
+        pt.scale.setScalar(pt.userData.baseScale * Math.max(0.25, twinkle));
       });
+      if (elapsed > 6.4) {
+        this._disposeWishObject(this.wishSparkles);
+        this.wishSparkles = null;
+      }
     }
-    // 完成清理
-    if (fp >= 1.0) {
-      this._cleanupCraneAndParticles();
-      s.phase = 'done';
-      if (s._resolve) { s._resolve(); s._resolve = null; }
+
+    if (this.wishFireworks) {
+      const elapsed = t - this.wishFireworks.userData.startedAt;
+      this.wishFireworks.children.forEach(pt => {
+        const age = elapsed - pt.userData.delay;
+        if (age <= 0) {
+          pt.material.opacity = 0;
+          return;
+        }
+        const p = Math.min(age / pt.userData.maxLife, 1);
+        if (pt.userData.kind === 'fireworkRing') {
+          const size = pt.userData.baseScale * (0.18 + eoc(p) * 1.15);
+          pt.scale.set(size, size, 1);
+          pt.rotation.z = pt.userData.phase + p * 0.45;
+          pt.material.opacity = Math.max(0, Math.sin(p * Math.PI) * 0.68);
+          return;
+        }
+        pt.position.copy(pt.userData.center)
+          .addScaledVector(pt.userData.velocity, eoc(p) * 1.35);
+        pt.position.y -= p * p * 0.42;
+        pt.material.opacity = Math.max(0, Math.sin(p * Math.PI) * (0.86 + Math.sin(t * 10 + pt.userData.phase) * 0.12));
+        pt.scale.setScalar(pt.userData.baseScale * (1.2 + p * 1.8));
+      });
+      if (elapsed > 5.4) {
+        this._disposeWishObject(this.wishFireworks);
+        this.wishFireworks = null;
+      }
+    }
+
+    const textStartedAt = this.wishTextSprite?.userData?.startedAt ?? this.wishTextGlow?.userData?.startedAt;
+    if (textStartedAt) {
+      const elapsed = t - textStartedAt;
+      const show = eoc(Math.min(Math.max((elapsed - 2.12) / 1.05, 0), 1));
+      if (this.wishTextGlow) {
+        this.wishTextGlow.material.opacity = show * (0.24 + Math.sin(t * 2.4) * 0.035);
+        const pulse = 1 + Math.sin(t * 1.8) * 0.025;
+        this.wishTextGlow.scale.set(3.0 * pulse, 0.95 * pulse, 1);
+      }
+      if (this.wishTextSprite) {
+        this.wishTextSprite.material.opacity = show * (0.9 + Math.sin(t * 1.5) * 0.03);
+        const pulse = 1 + Math.sin(t * 1.5) * 0.018;
+        this.wishTextSprite.scale.set(2.55 * pulse, 0.78 * pulse, 1);
+      }
     }
   }
 
-  // 清理千纸鹤、粒子、闪光球
-  _cleanupCraneAndParticles() {
-    [this.craneGroup, this.transformationParticles, this.flashSphere].forEach(obj => {
-      if (!obj) return;
-      this.scene.remove(obj);
-      obj.traverse(ch => { if (ch.geometry) ch.geometry.dispose(); if (ch.material) (Array.isArray(ch.material) ? ch.material : [ch.material]).forEach(m => m.dispose()); });
+  _disposeWishObject(obj) {
+    if (!obj) return;
+    this.scene?.remove(obj);
+    obj.traverse(ch => {
+      if (ch.geometry) ch.geometry.dispose();
+      if (!ch.material) return;
+      const mats = Array.isArray(ch.material) ? ch.material : [ch.material];
+      mats.forEach(m => {
+        if (m.map) m.map.dispose();
+        m.dispose();
+      });
     });
-    this.craneGroup = null;
-    this.transformationParticles = null;
-    this.flashSphere = null;
+  }
+
+  _cleanupWishEffects() {
+    [this.wishSparkles, this.wishFireworks, this.wishTextSprite, this.wishTextGlow].forEach(obj => this._disposeWishObject(obj));
+    this.wishSparkles = null;
+    this.wishFireworks = null;
+    this.wishTextSprite = null;
+    this.wishTextGlow = null;
   }
 
   // ─── blowCandles ───
@@ -876,33 +1134,78 @@ export class CakeScene {
       if (!alive.length) { resolve(); return; }
       let done = 0; const smoke = [];
 
+      const smokeSpriteMat = new THREE.SpriteMaterial({
+        map: this._smokeTex,
+        blending: THREE.NormalBlending,
+        depthWrite: false,
+        depthTest: true,
+        transparent: true,
+        opacity: 0.55,
+      });
+
       alive.forEach((fo, idx) => {
         setTimeout(() => {
           if (!fo.group || !fo.group.parent) { done++; return; }
-          const sTime = performance.now() / 1000;
-          const ext = () => {
-            const elapsed = performance.now() / 1000 - sTime;
-            const p = Math.min(elapsed / 0.3, 1.0);
-            const sc = 1 - eoc(p);
-            fo.group.scale.setScalar(sc);
-            if (fo.light) fo.light.intensity = 0.5 * sc;
-            if (p < 1.0) { requestAnimationFrame(ext); return; }
-            // 烟雾
-            const wp = new THREE.Vector3(); fo.group.getWorldPosition(wp);
-            [0, 1, 2, 3, 4].forEach(() => {
-              const sm = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 8),
-                new THREE.MeshBasicMaterial({ color: '#cccccc', transparent: true, opacity: 0.5, depthWrite: false }));
-              sm.position.copy(wp).add(new THREE.Vector3(rand(-0.03, 0.03), 0, rand(-0.03, 0.03)));
-              sm.userData = { vel: new THREE.Vector3(rand(-0.1, 0.1), rand(0.3, 0.8), rand(-0.1, 0.1)), life: 0, maxLife: rand(1.0, 2.0) };
-              this.scene.add(sm); smoke.push(sm);
-            });
-            if (fo.group.parent) fo.group.parent.remove(fo.group);
-            if (fo.light?.parent) fo.light.parent.remove(fo.light);
-            fo.group = null; fo.light = null;
-            done++;
-            if (done >= alive.length) this._finishBlow(smoke, resolve);
+          const origX = fo.group.position.x;
+          const particles = fo.particles || [];
+          // a. 抖动动画
+          const shakeStart = performance.now() / 1000;
+          const shakeDuration = 0.3;
+          const shake = () => {
+            const elapsed = performance.now() / 1000 - shakeStart;
+            if (elapsed < shakeDuration && fo.group && fo.group.parent) {
+              fo.group.position.x = origX + Math.sin(elapsed * 63) * 0.03 * (1 - elapsed / shakeDuration);
+              if (fo.light) fo.light.intensity = 1.2 * (1 - elapsed / shakeDuration) + 0.15;
+              requestAnimationFrame(shake);
+            } else {
+              // b. 粒子渐灭（opacity + scale → 0）
+              if (fo.group) fo.group.position.x = origX;
+              const sTime = performance.now() / 1000;
+              const dur = 0.5;
+              const ext = () => {
+                const elapsed2 = performance.now() / 1000 - sTime;
+                const p = Math.min(elapsed2 / dur, 1.0);
+                const fade = 1 - eoc(p);
+                // 粒子缩小变透明
+                for (const sp of particles) {
+                  if (!sp || !sp.material) continue;
+                  sp.material.opacity = Math.max(0, (sp.material.opacity ?? 0.5) * fade);
+                  const s = sp.scale;
+                  sp.scale.set(
+                    Math.max(0.001, s.x * fade),
+                    Math.max(0.001, s.y * fade),
+                    1
+                  );
+                }
+                if (fo.light) fo.light.intensity = 0.5 * fade;
+                if (p < 1.0) { requestAnimationFrame(ext); return; }
+                // c. 纹理烟雾 sprite
+                const wp2 = new THREE.Vector3(); fo.group.getWorldPosition(wp2);
+                for (let s = 0; s < 6; s++) {
+                  const smSprite = new THREE.Sprite(smokeSpriteMat.clone());
+                  smSprite.position.copy(wp2).add(
+                    new THREE.Vector3(rand(-0.04, 0.04), rand(0.01, 0.05), rand(-0.04, 0.04))
+                  );
+                  const smSize = rand(0.04, 0.09);
+                  smSprite.scale.set(smSize, smSize, 1);
+                  smSprite.userData = {
+                    vel: new THREE.Vector3(rand(-0.06, 0.06), rand(0.18, 0.55), rand(-0.06, 0.06)),
+                    life: 0, maxLife: rand(1.5, 2.5),
+                  };
+                  this.scene.add(smSprite);
+                  smoke.push(smSprite);
+                }
+                // 清理火焰
+                if (fo.group.parent) fo.group.parent.remove(fo.group);
+                if (fo.light?.parent) fo.light.parent.remove(fo.light);
+                fo.group = null; fo.light = null; fo.particles = null;
+                done++;
+                if (done >= alive.length) this._finishBlow(smoke, resolve);
+              };
+              ext();
+            }
           };
-          ext();
+          shake();
         }, idx * 60 + rand(0, 40));
       });
     });
@@ -911,17 +1214,28 @@ export class CakeScene {
   _finishBlow(smoke, resolve) {
     const up = () => {
       let more = false;
+      const dt = 0.016;
       smoke.forEach(s => {
-        s.userData.life += 0.016;
-        if (s.userData.life < s.userData.maxLife) {
-          s.position.add(s.userData.vel.clone().multiplyScalar(0.016));
-          s.material.opacity = 0.5 * (1 - s.userData.life / s.userData.maxLife); more = true;
-        } else { this.scene.remove(s); s.geometry.dispose(); s.material.dispose(); }
+        if (!s.userData) return;
+        s.userData.life += dt;
+        const progress = s.userData.life / s.userData.maxLife;
+        if (progress < 1) {
+          s.position.add(s.userData.vel.clone().multiplyScalar(dt));
+          // 上浮 + 扩散
+          const grow = 1 + progress * 2.5;
+          s.scale.setScalar((s.userData.baseScale ?? 0.06) * grow);
+          s.material.opacity = 0.5 * (1 - progress) * (1 - progress * 0.3);
+          more = true;
+        } else {
+          this.scene.remove(s);
+          if (s.material) s.material.dispose();
+        }
       });
       if (more) requestAnimationFrame(up);
       else {
-        this.scene.background = new THREE.Color('#1a0a1a');
-        if (this.candleGlowLight) this.candleGlowLight.intensity = 0.3;
+        this.scene.background = new THREE.Color('#0d0820');
+        this.scene.fog = new THREE.Fog('#0d0820', 18, 45);
+        if (this.candleGlowLight) this.candleGlowLight.intensity = 0.15;
         this.showConfetti(); resolve();
       }
     };
@@ -930,16 +1244,32 @@ export class CakeScene {
 
   // ─── 彩带 ───
   showConfetti() {
-    const colors = ['#FF69B4', '#FFD700', '#FFFFFF', '#FFB7C5', '#FFA07A', '#DDA0DD'];
-    const geo = new THREE.PlaneGeometry(0.08, 0.08);
-    for (let i = 0; i < 120; i++) {
-      const piece = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-        color: colors[Math.floor(Math.random() * colors.length)], roughness: 0.4, side: THREE.DoubleSide,
-        transparent: true, opacity: 0.9 }));
-      piece.position.set(rand(-2, 2), rand(2.5, 6), rand(-2, 2));
+    const colors = ['#FF69B4', '#FFD700', '#FFFFFF', '#FFB7C5', '#FFA07A', '#DDA0DD', '#FFE4E1', '#87CEEB'];
+    // 多种形状：方片 + 细长条
+    for (let i = 0; i < 200; i++) {
+      const isStrip = Math.random() < 0.4;
+      const w = isStrip ? rand(0.02, 0.04) : rand(0.05, 0.10);
+      const h = isStrip ? rand(0.08, 0.18) : rand(0.05, 0.10);
+      const geo = new THREE.PlaneGeometry(w, h);
+      const mat = new THREE.MeshPhysicalMaterial({
+        color: colors[Math.floor(Math.random() * colors.length)],
+        roughness: 0.35,
+        metalness: 0.05,
+        clearcoat: 0.15,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.92,
+      });
+      const piece = new THREE.Mesh(geo, mat);
+      piece.position.set(rand(-2.5, 2.5), rand(2.2, 7), rand(-2.5, 2.5));
       piece.rotation.set(rand(0, Math.PI * 2), rand(0, Math.PI * 2), rand(0, Math.PI * 2));
-      piece.userData = { vel: new THREE.Vector3(rand(-0.3, 0.3), rand(-0.8, -0.2), rand(-0.3, 0.3)),
-        rot: new THREE.Vector3(rand(0.5, 2), rand(0.5, 2), rand(0.5, 2)) };
+      piece.userData = {
+        vel: new THREE.Vector3(rand(-0.4, 0.4), rand(-1.2, -0.3), rand(-0.4, 0.4)),
+        rot: new THREE.Vector3(rand(0.8, 3), rand(0.8, 3), rand(0.8, 3)),
+        windPhase: Math.random() * Math.PI * 2,
+        windAmp: rand(0.3, 0.8),
+        damping: rand(0.92, 0.98),
+      };
       this.scene.add(piece);
       this.confettiParticles.push(piece);
     }
@@ -948,10 +1278,101 @@ export class CakeScene {
   _animConfetti(t, dt) {
     for (let i = this.confettiParticles.length - 1; i >= 0; i--) {
       const p = this.confettiParticles[i], u = p.userData;
-      p.position.x += u.vel.x * dt; p.position.y += u.vel.y * dt; p.position.z += u.vel.z * dt;
-      p.rotation.x += u.rot.x * dt; p.rotation.y += u.rot.y * dt; p.rotation.z += u.rot.z * dt;
-      u.vel.x += Math.sin(t * 3 + i) * 0.01 * dt;
-      if (p.position.y < -3) { this.scene.remove(p); p.geometry.dispose(); p.material.dispose(); this.confettiParticles.splice(i, 1); }
+      // 风：正弦水平推力 + 轻微随机
+      const windX = Math.sin(t * 1.3 + u.windPhase) * u.windAmp * dt;
+      const windZ = Math.cos(t * 0.9 + u.windPhase) * u.windAmp * 0.5 * dt;
+      u.vel.x += windX;
+      u.vel.z += windZ;
+      // 重力 + 阻尼
+      u.vel.y -= 0.3 * dt;
+      u.vel.x *= u.damping;
+      u.vel.z *= u.damping;
+      p.position.x += u.vel.x * dt;
+      p.position.y += u.vel.y * dt;
+      p.position.z += u.vel.z * dt;
+      // 旋转加速（空气阻力）
+      p.rotation.x += u.rot.x * dt;
+      p.rotation.y += u.rot.y * dt;
+      p.rotation.z += u.rot.z * dt;
+      u.rot.x *= 0.995;
+      u.rot.y *= 0.995;
+      u.rot.z *= 0.995;
+      // 超出范围回收
+      if (p.position.y < -4 || Math.abs(p.position.x) > 6 || Math.abs(p.position.z) > 6) {
+        this.scene.remove(p);
+        p.geometry.dispose();
+        p.material.dispose();
+        this.confettiParticles.splice(i, 1);
+      }
+    }
+  }
+
+  // ─── 烛光微粒子 ───
+  _spawnFlameSparkles(t) {
+    if (this.flameGroup.length === 0) return;
+    if (!this._sparklePool) {
+      this._sparklePool = [];
+      const sparkTex = this._glowTex; // 复用光晕纹理
+      for (let i = 0; i < 60; i++) {
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+          map: sparkTex,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          depthTest: true,
+          transparent: true,
+          opacity: 0,
+        }));
+        sp.scale.set(0.008, 0.008, 1);
+        sp.visible = false;
+        sp.userData = { life: 0, maxLife: 0, vel: new THREE.Vector3(), active: false };
+        this.scene.add(sp);
+        this._sparklePool.push(sp);
+      }
+    }
+
+    const now = t;
+    // 定期从随机蜡烛生成火花
+    if (!this._lastSparkleSpawn || now - this._lastSparkleSpawn > 0.04) {
+      this._lastSparkleSpawn = now;
+      const fo = this.flameGroup[Math.floor(Math.random() * this.flameGroup.length)];
+      if (fo && fo.group && fo.group.parent) {
+        const wp = new THREE.Vector3(); fo.group.getWorldPosition(wp);
+        // 找一个空闲池中粒子
+        const sp = this._sparklePool.find(s => !s.userData.active);
+        if (sp) {
+          sp.position.copy(wp).add(new THREE.Vector3(rand(-0.02, 0.02), rand(0.02, 0.06), rand(-0.02, 0.02)));
+          sp.visible = true;
+          sp.material.opacity = rand(0.5, 0.9);
+          const s = rand(0.004, 0.014);
+          sp.scale.set(s, s, 1);
+          sp.userData.active = true;
+          sp.userData.life = 0;
+          sp.userData.maxLife = rand(0.6, 1.5);
+          sp.userData.vel.set(rand(-0.012, 0.012), rand(0.03, 0.08), rand(-0.012, 0.012));
+        }
+      }
+    }
+  }
+
+  _animFlameSparkles(t, dt) {
+    if (!this._sparklePool) return;
+    for (const sp of this._sparklePool) {
+      if (!sp.userData.active) continue;
+      sp.userData.life += dt;
+      const p = sp.userData.life / sp.userData.maxLife;
+      if (p >= 1) {
+        sp.visible = false;
+        sp.userData.active = false;
+        sp.material.opacity = 0;
+        continue;
+      }
+      sp.position.x += sp.userData.vel.x * dt;
+      sp.position.y += sp.userData.vel.y * dt;
+      sp.position.z += sp.userData.vel.z * dt;
+      sp.userData.vel.x += Math.sin(sp.userData.life * 10) * 0.003 * dt;
+      sp.material.opacity = Math.max(0, 0.8 * (1 - p) * (1 - p * 0.4));
+      const s = sp.scale.x * (1 + dt * 0.8);
+      sp.scale.setScalar(Math.min(0.025, s));
     }
   }
 
@@ -964,6 +1385,7 @@ export class CakeScene {
     if (!this.container || !this.camera || !this.renderer) return;
     const [w, h] = [this.container.clientWidth, this.container.clientHeight];
     this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); this.renderer.setSize(w, h);
+    if (this.composer) this.composer.setSize(w, h);
   }
 
   // ─── dispose ───
@@ -987,24 +1409,58 @@ export class CakeScene {
       });
       this._starLayers = null;
     }
-    // 清理许愿纸（如未在动画中清理）
+    // 清理火花池
+    if (this._sparklePool) {
+      this._sparklePool.forEach(sp => {
+        this.scene?.remove(sp);
+        sp.material.dispose();
+      });
+      this._sparklePool = null;
+    }
+    // 清理纹理
+    [this._flameTex, this._smokeTex, this._glowTex].forEach(tex => {
+      if (tex) tex.dispose();
+    });
+    this._flameTex = null; this._smokeTex = null; this._glowTex = null;
+    // 清理许愿纸
     if (this.wishPaper) {
       this.scene?.remove(this.wishPaper);
       if (this.wishPaper.geometry) this.wishPaper.geometry.dispose();
+      if (this.wishPaper.material?.map) this.wishPaper.material.map.dispose();
       if (this.wishPaper.material) this.wishPaper.material.dispose();
       this.wishPaper = null;
     }
-    // 清理千纸鹤、粒子、闪光球（统一清理函数）
-    this._cleanupCraneAndParticles?.();
+    this._cleanupWishEffects?.();
+    // 清理 composer
+    if (this.composer) {
+      this.composer.passes.forEach(p => {
+        if (p.dispose) p.dispose();
+      });
+      this.composer = null;
+    }
+    this.bloomPass = null;
+    this.bokehPass = null;
     if (this.scene) {
-      this.scene.traverse(ch => { if (ch.geometry && ch !== this.scene) ch.geometry.dispose(); if (ch.material) (Array.isArray(ch.material) ? ch.material : [ch.material]).forEach(m => m.dispose()); });
+      this.scene.traverse(ch => {
+        if (ch.geometry && ch !== this.scene) ch.geometry.dispose();
+        if (ch.material) {
+          const mats = Array.isArray(ch.material) ? ch.material : [ch.material];
+          mats.forEach(m => {
+            if (m.map && m.map !== this._flameTex && m.map !== this._smokeTex && m.map !== this._glowTex) m.map.dispose();
+            m.dispose();
+          });
+        }
+      });
       this.scene.clear();
     }
     this.renderer?.dispose();
     if (this.container && this.renderer?.domElement?.parentElement === this.container) this.container.removeChild(this.renderer.domElement);
     this.controls?.dispose();
-    Object.assign(this, { scene: null, camera: null, renderer: null, controls: null, flameGroup: [],
-      confettiParticles: [], wishPaper: null, paperAnimState: null,
-      craneGroup: null, craneModel: null, transformationParticles: null, flashSphere: null });
+    Object.assign(this, {
+      scene: null, camera: null, renderer: null, composer: null, bloomPass: null, bokehPass: null, controls: null,
+      flameGroup: [], confettiParticles: [], wishPaper: null, paperAnimState: null,
+      wishSparkles: null, wishFireworks: null, wishTextSprite: null, wishTextGlow: null,
+      _flameTex: null, _smokeTex: null, _glowTex: null,
+    });
   }
 }

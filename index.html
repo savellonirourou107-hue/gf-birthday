@@ -18,6 +18,11 @@
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
     <title>💝 小团，生日快乐！</title>
+    <!-- 第三方库 -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11.1.14/swiper-bundle.min.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11.1.14/swiper-bundle.min.js" crossorigin="anonymous"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
@@ -106,26 +111,37 @@
             </button>
         </div>
 
-        <!-- 3D相册 -->
+        <!-- 3D相册 (Swiper) -->
         <div class="album-section">
             <div class="album-container">
-                <div class="album">
-                    <div class="photo-card" style="--r:-4deg">
-                        <img src="assets/images/photo1.jpg" alt="小团的美好瞬间 1" loading="lazy" decoding="async">
-                        <p class="polaroid-caption">美好瞬间</p>
+                <div class="swiper album-swiper">
+                    <div class="swiper-wrapper">
+                        <div class="swiper-slide">
+                            <div class="photo-card">
+                                <img src="assets/images/photo1.jpg" alt="小团的美好瞬间 1" width="280" height="340" loading="lazy" decoding="async">
+                                <p class="polaroid-caption">某年某月某日 · 第一次见面</p>
+                            </div>
+                        </div>
+                        <div class="swiper-slide">
+                            <div class="photo-card">
+                                <img src="assets/images/photo2.jpg" alt="小团的美好瞬间 2" width="280" height="340" loading="lazy" decoding="async">
+                                <p class="polaroid-caption">在那家咖啡店 · 下午的阳光</p>
+                            </div>
+                        </div>
+                        <div class="swiper-slide">
+                            <div class="photo-card">
+                                <img src="assets/images/photo3.jpg" alt="小团的美好瞬间 3" width="280" height="340" loading="lazy" decoding="async">
+                                <p class="polaroid-caption">一起走过 · 那条街</p>
+                            </div>
+                        </div>
+                        <div class="swiper-slide">
+                            <div class="photo-card">
+                                <img src="assets/images/photo4.jpg" alt="小团的美好瞬间 4" width="280" height="340" loading="lazy" decoding="async">
+                                <p class="polaroid-caption">记得那天 · 你的笑容</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="photo-card" style="--r:3deg">
-                        <img src="assets/images/photo2.jpg" alt="小团的美好瞬间 2" loading="lazy" decoding="async">
-                        <p class="polaroid-caption">美好瞬间</p>
-                    </div>
-                    <div class="photo-card" style="--r:-2deg">
-                        <img src="assets/images/photo3.jpg" alt="小团的美好瞬间 3" loading="lazy" decoding="async">
-                        <p class="polaroid-caption">美好瞬间</p>
-                    </div>
-                    <div class="photo-card" style="--r:5deg">
-                        <img src="assets/images/photo4.jpg" alt="小团的美好瞬间 4" loading="lazy" decoding="async">
-                        <p class="polaroid-caption">美好瞬间</p>
-                    </div>
+                    <div class="swiper-pagination"></div>
                 </div>
             </div>
         </div>
@@ -134,8 +150,8 @@
     <!-- 蛋糕入口 -->
     <div class="cake-entry">
         <button id="cake-icon-btn" class="cake-icon-btn" title="点蜡烛许愿">
-            <span class="cake-icon-emoji">🎂</span>
-            <span class="cake-icon-label">点蜡烛</span>
+            <span class="cake-icon-emoji">🕯️</span>
+            <span class="cake-icon-label">帮我把蜡烛吹灭</span>
         </button>
     </div>
 
@@ -144,20 +160,23 @@
         <div id="quiz-particles" class="quiz-particles-layer" aria-hidden="true"></div>
         <div class="quiz-card">
             <div class="quiz-progress">
-                <span class="quiz-dot active" data-q="1"></span>
-                <span class="quiz-dot" data-q="2"></span>
-                <span class="quiz-dot" data-q="3"></span>
-                <span class="quiz-dot" data-q="4"></span>
-                <span class="quiz-dot" data-q="5"></span>
+                <span class="quiz-count">第 1 / 5 题</span>
+                <div class="quiz-dots">
+                    <span class="quiz-dot active" data-q="1"></span>
+                    <span class="quiz-dot" data-q="2"></span>
+                    <span class="quiz-dot" data-q="3"></span>
+                    <span class="quiz-dot" data-q="4"></span>
+                    <span class="quiz-dot" data-q="5"></span>
+                </div>
             </div>
             <h3 id="quiz-question" class="quiz-question"></h3>
             <div id="quiz-options" class="quiz-options"></div>
             <div id="quiz-result" class="quiz-result hidden">
                 <div class="result-icon">🎉</div>
-                <h3>我就知道你都懂</h3>
-                <p>生日快乐，小团</p>
+                <h3 id="quiz-result-title">我就知道你都懂</h3>
+                <p id="quiz-result-subtitle">生日快乐，小团</p>
                 <p class="result-sub">好啦，给你看信</p>
-                <button id="quiz-continue-btn" class="modal-start-btn">翻开 →</button>
+                <button id="quiz-continue-btn" class="modal-start-btn">展开信纸 →</button>
             </div>
         </div>
     </div>
@@ -197,7 +216,7 @@
     <!-- 天幕开关按钮 -->
     <button id="message-board-toggle" class="message-board-toggle" title="古诗词">
         <span class="toggle-icon">📜</span>
-        <span class="toggle-label">点我点我！</span>
+        <span class="toggle-label">许一个愿望</span>
     </button>
 
     <!-- 音乐控制 -->
@@ -209,11 +228,28 @@
             <span class="music-disc">♪</span>
         </button>
         <div class="music-panel" aria-label="背景音乐播放器">
-            <button id="music-btn" class="music-play-btn" title="播放或暂停">▶</button>
-            <div class="music-progress" aria-hidden="true">
-                <span id="music-progress-bar"></span>
+            <div class="music-panel-top">
+                <div class="music-cover" aria-hidden="true">
+                    <svg viewBox="0 0 56 56" class="music-cover-svg"><circle cx="28" cy="28" r="28" fill="url(#music-grad)"/><text x="28" y="36" text-anchor="middle" font-size="28">🎵</text><defs><linearGradient id="music-grad" x1="0" y1="0" x2="56" y2="56"><stop offset="0%" stop-color="#ff8fa3"/><stop offset="100%" stop-color="#d63865"/></linearGradient></defs></svg>
+                </div>
+                <div class="music-info">
+                    <span class="music-title">Love</span>
+                    <span class="music-artist">小团生日快乐</span>
+                </div>
             </div>
-            <span id="music-time" class="music-time">0:00</span>
+            <div class="music-progress-wrap">
+                <input type="range" id="music-progress-slider" class="music-progress-slider" min="0" max="100" value="0" step="0.1" aria-label="播放进度">
+                <span id="music-time-current" class="music-time">0:00</span>
+                <span class="music-time-sep">/</span>
+                <span id="music-time-duration" class="music-time">0:00</span>
+            </div>
+            <div class="music-controls">
+                <button id="music-prev-btn" class="music-ctrl-btn" title="上一首" disabled>⏮</button>
+                <button id="music-btn" class="music-play-btn-main" title="播放或暂停">
+                    <span class="music-btn-icon">▶</span>
+                </button>
+                <button id="music-next-btn" class="music-ctrl-btn" title="下一首" disabled>⏭</button>
+            </div>
         </div>
     </div>
 
@@ -239,7 +275,10 @@
         <div id="wish-overlay" class="wish-overlay hidden">
             <div class="wish-paper">
                 <p class="wish-title">许个愿吧 ✨</p>
-                <textarea id="wish-input" class="wish-input" placeholder="在这里写下你的愿望..." maxlength="200"></textarea>
+                <div class="wish-input-wrap">
+                    <textarea id="wish-input" class="wish-input" placeholder="在这里写下你的愿望…" maxlength="50"></textarea>
+                    <span class="wish-char-count">0 / 50</span>
+                </div>
                 <button id="wish-done-btn" class="wish-done-btn">我写好了</button>
             </div>
         </div>

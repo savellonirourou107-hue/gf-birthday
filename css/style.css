@@ -15,6 +15,12 @@
     --color-text: #3a2520;         /* 正文色：深褐 */
     --color-text-light: #6b5048;   /* 辅助文字 */
 
+    /* 玫瑰色系主题变量 */
+    --color-rose: #ff8fa3;
+    --color-rose-light: #ffd6e0;
+    --color-rose-deep: #d63865;
+    --color-ink: #3a1f2e;
+
     /* 字体 */
     --font-main: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
     --font-serif: "Songti SC", "STSong", "SimSun", serif;
@@ -47,7 +53,7 @@
 body {
     min-height: 100vh;
     background: linear-gradient(160deg, #fce4ec 0%, #f8e8e0 40%, #faf3f0 100%);
-    font-family: var(--font-main);
+    font-family: 'Ma Shan Zheng', var(--font-hand), var(--font-main);
     font-size: var(--text-base);
     position: relative;
     padding: 3rem 1rem;
@@ -239,7 +245,7 @@ body.overlay-active .music-control {
 
 .title-decoration span {
     font-size: 1.5rem;
-    color: #ff4b6e;
+    color: var(--color-rose-deep);
     animation: pulse 2s infinite;
 }
 
@@ -296,7 +302,7 @@ body.overlay-active .music-control {
 
 .message-decoration {
     font-size: 2rem;
-    color: #ff4b6e;
+    color: var(--color-rose-deep);
     opacity: 0.8;
 }
 
@@ -324,7 +330,7 @@ body.overlay-active .music-control {
 }
 
 .heart-icon {
-    fill: #ff4b6e;
+    fill: var(--color-rose-deep);
     filter: drop-shadow(0 0 10px rgba(255, 75, 110, 0.5));
     transition: fill 0.3s ease;
 }
@@ -488,7 +494,7 @@ body.overlay-active .music-control {
 }
 
 .share-icon {
-    fill: #ff4b6e;
+    fill: var(--color-rose-deep);
     filter: drop-shadow(0 0 10px rgba(255, 75, 110, 0.5));
     transition: fill 0.3s ease;
 }
@@ -553,6 +559,13 @@ body.overlay-active .music-control {
     z-index: 2;
 }
 
+/* 图片骨架占位 */
+.photo-card img {
+    background: var(--color-rose-light);
+    border-radius: 2px;
+    min-height: 200px;
+}
+
 .polaroid-caption {
     position: absolute;
     left: 10px;
@@ -600,7 +613,7 @@ body.overlay-active .music-control {
     height: 44px;
     padding: 0 0.9rem 0 0.7rem;
     border-radius: 22px 0 0 22px;
-    background: linear-gradient(135deg, #ff4b6e 0%, #e7355b 100%);
+    background: linear-gradient(135deg, var(--color-rose-deep) 0%, #e7355b 100%);
     border: none;
     cursor: pointer;
     z-index: 1000;
@@ -1251,12 +1264,12 @@ body.overlay-active .music-control {
 }
 
 .quiz-dot.active {
-    background: #ff4b6e;
+    background: var(--color-rose-deep);
     box-shadow: 0 0 10px rgba(255, 75, 110, 0.6);
 }
 
 .quiz-dot.done {
-    background: #ff4b6e;
+    background: var(--color-rose-deep);
 }
 
 .quiz-question {
@@ -1297,8 +1310,8 @@ body.overlay-active .music-control {
 }
 
 .quiz-option.correct-flash {
-    background: #ff4b6e !important;
-    border-color: #ff4b6e !important;
+    background: var(--color-rose-deep) !important;
+    border-color: var(--color-rose-deep) !important;
     animation: flash 0.5s ease;
 }
 
@@ -1957,6 +1970,106 @@ body.overlay-active .music-control {
     height: 100%;
 }
 
+/* ---- 许愿成功烟花祝福层 ---- */
+.wish-firework-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    pointer-events: none;
+    opacity: 0;
+    overflow: hidden;
+}
+
+.wish-firework-layer.show {
+    animation: wishLayerFade 6.6s ease forwards;
+}
+
+.wish-success-title {
+    position: absolute;
+    top: clamp(58px, 12vh, 108px);
+    left: 50%;
+    transform: translateX(-50%) scale(0.88);
+    font-family: var(--font-hand), "Ma Shan Zheng", "KaiTi", cursive;
+    font-size: clamp(2.6rem, 8vw, 5.6rem);
+    line-height: 1;
+    white-space: nowrap;
+    color: #fff9f0;
+    letter-spacing: 0;
+    text-shadow:
+        0 0 8px rgba(255, 183, 197, 0.92),
+        0 0 22px rgba(255, 183, 197, 0.72),
+        0 6px 18px rgba(92, 25, 42, 0.36);
+    opacity: 0;
+    animation: wishTitleBloom 5.8s 1.15s ease forwards;
+}
+
+.wish-firework-burst {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    width: min(var(--s), 34vw);
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%) scale(0.12) rotate(var(--a));
+    border-radius: 50%;
+    opacity: 0;
+    background:
+        repeating-conic-gradient(
+            from var(--a),
+            transparent 0deg 8deg,
+            rgba(255, 183, 197, 0.92) 9deg 11deg,
+            rgba(255, 249, 240, 0.75) 12deg 14deg,
+            transparent 15deg 22deg
+        );
+    -webkit-mask: radial-gradient(circle, transparent 0 24%, #000 25% 68%, transparent 70%);
+    mask: radial-gradient(circle, transparent 0 24%, #000 25% 68%, transparent 70%);
+    filter:
+        drop-shadow(0 0 8px rgba(255, 183, 197, 0.78))
+        drop-shadow(0 0 18px rgba(255, 225, 160, 0.42));
+    animation: wishFireworkBloom 3.6s var(--d) ease-out forwards;
+}
+
+@keyframes wishLayerFade {
+    0% { opacity: 0; }
+    14% { opacity: 1; }
+    78% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@keyframes wishTitleBloom {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.78);
+        filter: blur(10px);
+    }
+    22% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1.03);
+        filter: blur(0);
+    }
+    100% {
+        opacity: 0.9;
+        transform: translateX(-50%) scale(1);
+        filter: blur(0);
+    }
+}
+
+@keyframes wishFireworkBloom {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.12) rotate(var(--a));
+    }
+    22% {
+        opacity: 0.95;
+    }
+    68% {
+        opacity: 0.58;
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.2) rotate(calc(var(--a) + 32deg));
+    }
+}
+
 /* ---- 许愿信纸overlay ---- */
 .wish-overlay {
     position: fixed;
@@ -2159,6 +2272,720 @@ body.overlay-active .music-control {
     .particle,
     .envelope-float,
     .particles-layer {
+        animation: none !important;
+    }
+}
+
+/* ══════════════════════════════════════
+   模块一：入场封面增强
+   ══════════════════════════════════════ */
+
+/* ♥ 呼吸动画增强 */
+@keyframes heartbeatEnhanced {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.1); }
+}
+
+.intro-heart {
+    animation: heartbeatEnhanced 2s ease-in-out infinite;
+    cursor: pointer;
+    min-width: 60px;
+    min-height: 60px;
+}
+
+/* 点击后心形淡出 */
+.intro-heart.fading {
+    animation: heartFadeOut 0.4s ease forwards;
+    pointer-events: none;
+}
+
+@keyframes heartFadeOut {
+    to { opacity: 0; transform: scale(0.8); }
+}
+
+/* 诗句从下方渐入 */
+.intro-poem {
+    position: absolute;
+    color: rgba(255, 245, 248, 0.9);
+    font-family: var(--font-hand);
+    font-size: 1.5rem;
+    text-align: center;
+    line-height: 2;
+    opacity: 0;
+    transform: translateY(20px);
+    pointer-events: none;
+}
+
+.intro-poem.show {
+    animation: poemRiseIn 0.6s ease forwards;
+}
+
+@keyframes poemRiseIn {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.intro-poem.fading {
+    animation: poemFade 0.6s ease 1.2s forwards;
+}
+
+@keyframes poemFade {
+    to { opacity: 0; transform: translateY(-10px); }
+}
+
+/* 点击提示文字 */
+.intro-copy {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+}
+
+/* ══════════════════════════════════════
+   模块二：信封增强
+   ══════════════════════════════════════ */
+
+.envelope-wrapper {
+    cursor: pointer;
+    user-select: none;
+    min-width: 44px;
+    min-height: 44px;
+}
+
+.css-envelope {
+    cursor: pointer;
+    user-select: none;
+}
+
+/* 信封翻盖 3D 动画 */
+@keyframes openEnvelope {
+    0%   { transform: perspective(600px) rotateX(0deg); }
+    100% { transform: perspective(600px) rotateX(-180deg); }
+}
+
+.css-envelope.flap-opening .css-envelope-flap {
+    animation: openEnvelope 0.6s ease-in-out forwards;
+}
+
+/* ══════════════════════════════════════
+   模块三：五问答题增强
+   ══════════════════════════════════════ */
+
+.quiz-count {
+    display: block;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.95rem;
+    font-family: var(--font-main);
+    text-align: center;
+    margin-bottom: 0.6rem;
+    letter-spacing: 0.05em;
+}
+
+.quiz-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+}
+
+.quiz-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-rose-light);
+    transition: all 0.3s ease;
+}
+
+.quiz-dot.active {
+    background: var(--color-rose);
+    box-shadow: 0 0 8px rgba(255, 143, 163, 0.6);
+}
+
+.quiz-dot.done {
+    background: var(--color-rose);
+}
+
+/* 正确/错误反馈 */
+.quiz-option.correct {
+    background: #e6f7ee !important;
+    border-color: #4caf50 !important;
+    color: #2e7d32 !important;
+}
+
+.quiz-option.wrong {
+    background: #fff0f0 !important;
+    border-color: #ef9a9a !important;
+    color: #c62828 !important;
+}
+
+.quiz-option.correct::after {
+    content: ' ✓';
+    font-weight: bold;
+}
+
+.quiz-option.wrong::after {
+    content: ' ✗';
+    font-weight: bold;
+}
+
+.quiz-hint-text {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.95rem;
+    margin-top: 0.8rem;
+    font-family: var(--font-hand);
+    animation: hintFadeIn 0.3s ease;
+}
+
+@keyframes hintFadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ══════════════════════════════════════
+   模块四：Swiper 照片轮播
+   ══════════════════════════════════════ */
+
+.album-swiper {
+    width: min(100%, 380px);
+    margin: 0 auto;
+    overflow: visible;
+    padding: 10px 0 50px;
+}
+
+.album-swiper .swiper-slide {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.35s ease, opacity 0.35s ease;
+}
+
+/* 非活动 slide 缩小 + 半透明（3D coverflow 感） */
+.album-swiper .swiper-slide:not(.swiper-slide-active) .photo-card {
+    transform: scale(0.88);
+    opacity: 0.55;
+    filter: brightness(0.85);
+}
+
+.album-swiper .swiper-slide-active .photo-card {
+    transform: scale(1);
+    opacity: 1;
+    filter: brightness(1);
+}
+
+/* Swiper 分页器定制 */
+.album-swiper .swiper-pagination {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+.album-swiper .swiper-pagination-bullet {
+    width: 8px;
+    height: 8px;
+    background: var(--color-rose-light);
+    opacity: 1;
+    transition: all 0.3s ease;
+}
+
+.album-swiper .swiper-pagination-bullet-active {
+    background: var(--color-rose-deep);
+    transform: scale(1.3);
+    box-shadow: 0 0 6px rgba(214, 56, 101, 0.4);
+}
+
+/* photo-card 适配 swiper */
+.album-swiper .photo-card {
+    width: 100%;
+    max-width: 280px;
+    aspect-ratio: 0.82;
+    padding: 10px 10px 48px;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow:
+        0 16px 30px rgba(87, 43, 43, 0.22),
+        0 3px 8px rgba(87, 43, 43, 0.12);
+    transition: transform 0.35s ease, opacity 0.35s ease, filter 0.35s ease, box-shadow 0.35s ease;
+    cursor: pointer;
+}
+
+.album-swiper .photo-card img {
+    width: 100%;
+    height: calc(100% - 40px);
+    object-fit: cover;
+    border-radius: 2px;
+    display: block;
+}
+
+.album-swiper .polaroid-caption {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b4a3a;
+    font-family: var(--font-hand);
+    font-size: 1.05rem;
+    line-height: 1;
+}
+
+@media (max-width: 768px) {
+    .album-swiper {
+        width: min(100%, 300px);
+    }
+    .album-swiper .photo-card {
+        max-width: 240px;
+    }
+    .album-swiper .polaroid-caption {
+        font-size: 0.9rem;
+    }
+}
+
+/* ══════════════════════════════════════
+   模块五：生日蛋糕文案 & 吹灭动效
+   ══════════════════════════════════════ */
+
+.cake-icon-label {
+    font-size: 0.72rem;
+    white-space: nowrap;
+}
+
+/* 火焰抖动 */
+@keyframes flameShake {
+    0%, 100% { transform: translateX(0); }
+    25%      { transform: translateX(3px); }
+    75%      { transform: translateX(-3px); }
+}
+
+/* 烟雾动画 */
+@keyframes smoke {
+    0%   { opacity: 0.7; transform: translateY(0) scaleX(1); }
+    100% { opacity: 0;   transform: translateY(-30px) scaleX(1.5); }
+}
+
+/* ══════════════════════════════════════
+   模块六：信件正文对比度
+   ══════════════════════════════════════ */
+
+.letter-paper {
+    color: #4a2e00;
+}
+
+.letter-dear {
+    color: #6b3a20;
+}
+
+.letter-body {
+    color: #4a2e00;
+}
+
+.letter-sign-name {
+    color: #4a2e00;
+    font-size: 1.3rem;
+}
+
+.letter-sign-date {
+    font-size: 0.85em;
+    color: #6b4226;
+    font-family: var(--font-hand);
+}
+
+/* ══════════════════════════════════════
+   模块七：星空天幕增强
+   ══════════════════════════════════════ */
+
+.sky-exit-btn {
+    padding-bottom: calc(0.65rem + env(safe-area-inset-bottom));
+}
+
+/* 诗句底部渐变遮罩 */
+.sky-poem-scroll::after {
+    content: '';
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: block;
+    height: 120px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.45) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 2505;
+}
+
+/* CSS 流星 (可选附加) */
+.sky-meteor {
+    position: absolute;
+    width: 40px;
+    height: 2px;
+    background: linear-gradient(to right, rgba(255, 255, 255, 0.9), transparent);
+    transform: rotate(45deg);
+    animation: meteor 1.2s linear forwards;
+    pointer-events: none;
+    z-index: 2503;
+}
+
+@keyframes meteor {
+    0%   { opacity: 1; transform: rotate(45deg) translateX(0) translateY(0); }
+    100% { opacity: 0; transform: rotate(45deg) translateX(200px) translateY(200px); }
+}
+
+/* ══════════════════════════════════════
+   模块八：许愿卷轴增强
+   ══════════════════════════════════════ */
+
+.wish-input-wrap {
+    position: relative;
+}
+
+.wish-char-count {
+    position: absolute;
+    right: 12px;
+    bottom: 8px;
+    font-family: var(--font-main);
+    font-size: 0.78rem;
+    color: rgba(92, 61, 46, 0.45);
+    pointer-events: none;
+}
+
+.wish-char-count.over {
+    color: #e53935;
+}
+
+/* 金色星星 confetti */
+.wish-star {
+    position: fixed;
+    z-index: 10002;
+    pointer-events: none;
+    font-size: 24px;
+    animation: wishStarFly 1.8s ease-out forwards;
+}
+
+@keyframes wishStarFly {
+    0%   { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+    100% { opacity: 0; transform: translateY(-120px) scale(0.3) rotate(180deg); }
+}
+
+.wish-done-btn.done {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+/* ══════════════════════════════════════
+   模块九：音乐播放器重新设计
+   ══════════════════════════════════════ */
+
+.music-control {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: flex-end;
+    gap: 0.7rem;
+    pointer-events: none;
+}
+
+.music-panel {
+    width: auto;
+    opacity: 0;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.8rem 1rem;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.32);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 14px 34px rgba(74, 24, 38, 0.22);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+    transform: scale(0.9);
+    min-width: 220px;
+    max-width: 260px;
+}
+
+.music-control.expanded .music-panel {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1);
+}
+
+/* 封面 + 歌曲信息 */
+.music-cover {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.music-cover-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.music-control.playing .music-cover-svg {
+    animation: spin 8s linear infinite;
+}
+
+.music-control.playing .music-cover {
+    animation: spin 8s linear infinite;
+}
+
+.music-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.music-panel-top {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.music-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #fff;
+    font-family: var(--font-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.music-artist {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.65);
+    font-family: var(--font-main);
+}
+
+/* 进度条滑块 */
+.music-progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.music-progress-slider {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: linear-gradient(to right, var(--color-rose) 0%, var(--color-rose) var(--progress, 0%), rgba(255, 255, 255, 0.25) var(--progress, 0%), rgba(255, 255, 255, 0.25) 100%);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.music-progress-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
+
+.music-progress-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    border: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
+
+.music-time {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-variant-numeric: tabular-nums;
+    min-width: 32px;
+    text-align: center;
+}
+
+.music-time-sep {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* 播放控制按钮 */
+.music-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.music-ctrl-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    font-size: 1rem;
+    display: grid;
+    place-items: center;
+    transition: background 0.2s ease;
+}
+
+.music-ctrl-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.music-ctrl-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.music-play-btn-main {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-rose) 0%, var(--color-rose-deep) 100%);
+    color: #fff;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 6px 18px rgba(214, 56, 101, 0.35);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.music-play-btn-main:hover {
+    transform: scale(1.08);
+    box-shadow: 0 8px 24px rgba(214, 56, 101, 0.45);
+}
+
+.music-toggle {
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: grid;
+    place-items: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 28px rgba(74, 24, 38, 0.24);
+    cursor: pointer;
+    pointer-events: auto;
+    background: rgba(255, 255, 255, 0.18);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    flex-shrink: 0;
+}
+
+.music-disc {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background:
+        radial-gradient(circle at center, rgba(255, 255, 255, 0.92) 0 4px, transparent 5px),
+        conic-gradient(from 30deg, #ff5f82, #77263b, #ffb7c5, #ff5f82);
+    font-size: 1rem;
+    color: #fff;
+}
+
+.music-control.playing .music-disc {
+    animation: spin 4s linear infinite;
+}
+
+.music-toggle:hover {
+    background: rgba(255, 255, 255, 0.26);
+    transform: scale(1.1);
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 隐藏旧版音乐面板内联元素 */
+.music-panel .music-play-btn,
+.music-panel .music-progress,
+.music-panel .music-time:not(.music-time-sep) {
+    /* 保留需要用到的 */
+}
+
+/* ══════════════════════════════════════
+   模块十：分享 Toast 增强
+   ══════════════════════════════════════ */
+
+.share-toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.82);
+    color: #fff;
+    padding: 0.7rem 1.6rem;
+    padding-bottom: calc(0.7rem + env(safe-area-inset-bottom));
+    border-radius: 50px;
+    font-size: 0.95rem;
+    font-family: var(--font-main);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.share-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.share-toast.hiding {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+    transition: opacity 0.2s ease-in, transform 0.2s ease-in;
+}
+
+.share-toast-subtitle {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* ══════════════════════════════════════
+   通用增强
+   ══════════════════════════════════════ */
+
+/* 所有交互元素最小触摸目标 44px */
+button,
+[role="button"],
+[tabindex] {
+    min-width: 44px;
+    min-height: 44px;
+}
+
+/* prefers-reduced-motion 追加 */
+@media (prefers-reduced-motion: reduce) {
+    .music-control.playing .music-cover,
+    .music-control.playing .music-cover-svg {
+        animation: none !important;
+    }
+    .music-disc {
         animation: none !important;
     }
 }
