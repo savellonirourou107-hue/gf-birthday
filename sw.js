@@ -1,4 +1,4 @@
-const CACHE = 'gf-birthday-v1';
+const CACHE = 'gf-birthday-v2';
 const ASSETS = [
   '/gf-birthday/',
   '/gf-birthday/index.html',
