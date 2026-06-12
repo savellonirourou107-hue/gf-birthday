@@ -667,46 +667,46 @@ function openEnvelope() {
 
     envelopeScreen.classList.add('reading');
 
-    const useGSAP = typeof gsap !== 'undefined';
-    if (useGSAP) {
-        // GSAP Timeline：精确编排封盖→抽信→飘离→淡出
-        const tl = gsap.timeline({
-            onComplete: () => {
-                envelopeScreen.style.display = 'none';
-                birthdayModal.classList.remove('hidden');
-            },
-        });
-        // flap opening
-        tl.set(cssEnvelope, { className: '+=opening flap-opening' })
-          // letter extract at 0.9s
-          .set(cssEnvelope, { className: '+=extracting' }, 0.9)
-          // departing at 2.6s
-          .to(envelopeFloat, {
-            scale: 1.4, opacity: 0, duration: 1, ease: 'power2.in',
-          }, 2.6)
-          .to(envelopeScreen, {
-            background: 'radial-gradient(ellipse at center, #ff9a9e 0%, #fad0c4 100%)',
-            duration: 1.2, ease: 'power2.out',
-          }, 2.6)
-          // fade out at 3.6s
-          .to(envelopeScreen, { opacity: 0, duration: 0.4, ease: 'power2.in' }, 3.6);
-    } else {
-        // CSS fallback
-        cssEnvelope.classList.add('opening');
-        cssEnvelope.classList.add('flap-opening');
-        setTimeout(() => { cssEnvelope.classList.add('extracting'); }, 900);
-        setTimeout(() => {
+    // 信封三层动画用 CSS 原生（最可靠），GSAP 只管漂浮淡出增强
+    cssEnvelope.classList.add('opening', 'flap-opening');
+
+    setTimeout(() => {
+        cssEnvelope.classList.add('extracting');
+    }, 900);
+
+    setTimeout(() => {
+        // GSAP 增强漂浮 + 背景渐变
+        if (typeof gsap !== 'undefined') {
+            gsap.to(envelopeFloat, {
+                scale: 1.4, opacity: 0, duration: 1, ease: 'power2.in',
+            });
+            gsap.to(envelopeScreen, {
+                background: 'radial-gradient(ellipse at center, #ff9a9e 0%, #fad0c4 100%)',
+                duration: 1.2, ease: 'power2.out',
+            });
+        } else {
             envelopeFloat.classList.add('departing');
             envelopeScreen.classList.add('transition-bg');
-        }, 2600);
-        setTimeout(() => {
+        }
+    }, 2600);
+
+    setTimeout(() => {
+        if (typeof gsap !== 'undefined') {
+            gsap.to(envelopeScreen, {
+                opacity: 0, duration: 0.4, ease: 'power2.in',
+                onComplete: () => {
+                    envelopeScreen.style.display = 'none';
+                    birthdayModal.classList.remove('hidden');
+                },
+            });
+        } else {
             envelopeScreen.classList.add('fade-out');
             setTimeout(() => {
                 envelopeScreen.style.display = 'none';
                 birthdayModal.classList.remove('hidden');
             }, 400);
-        }, 3600);
-    }
+        }
+    }, 3600);
 }
 
 // 整个信封区域可点击
@@ -1018,6 +1018,9 @@ quizContinueBtn.addEventListener('click', async () => {
 
 // "看完了" → 关闭长信，浮现情话和相册
 document.getElementById('letter-continue-btn').addEventListener('click', () => {
+    // 右侧按钮文案更改为「点我点我」
+    const toggleLabel = document.querySelector('.toggle-label');
+    if (toggleLabel) toggleLabel.textContent = '点我点我';
     longLetter.classList.remove('reveal');
     setTimeout(() => {
         longLetter.classList.add('hidden');
@@ -1351,7 +1354,7 @@ wishDoneBtn.addEventListener('click', () => {
     // 生成金色星星 confetti
     spawnWishStars();
     // 按钮状态变更
-    wishDoneBtn.textContent = '✨ 愿望已封印';
+    wishDoneBtn.textContent = '✨ 愿望进入实现倒计时……';
     wishDoneBtn.classList.add('done');
     // 2.5s 后关闭面板
     setTimeout(() => {

@@ -146,25 +146,25 @@ export class CakeScene {
     // Bloom 泛光
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(w, h),
-      0.65,   // strength
+      0.38,   // strength（降低，避免过曝）
       0.4,    // radius
-      0.85    // threshold
+      0.88    // threshold（提高，只让火焰/星光发光）
     );
     this.composer.addPass(this.bloomPass);
 
     // Bokeh 景深：对焦蛋糕中心 (0, 1.2, 0)，距离约 3.5
     this.bokehPass = new BokehPass(this.scene, this.camera, {
       focus: 3.5,
-      aperture: 0.0008,
-      maxBlur: 0.015,
+      aperture: 0.0005,
+      maxBlur: 0.008,
     });
     this.composer.addPass(this.bokehPass);
   }
 
   _setupLights() {
-    this.scene.add(new THREE.AmbientLight('#fff5e6', 0.7));
-    this.scene.add(new THREE.HemisphereLight('#8899cc', '#443322', 0.6));
-    this.candleGlowLight = new THREE.PointLight('#ff9933', 2.5, 6, 1.5);
+    this.scene.add(new THREE.AmbientLight('#fff5e6', 0.45));
+    this.scene.add(new THREE.HemisphereLight('#8899cc', '#443322', 0.35));
+    this.candleGlowLight = new THREE.PointLight('#ff9933', 1.8, 5, 1.5);
     this.candleGlowLight.position.set(0, 1.6, 0);
     this.candleGlowLight.castShadow = true;
     this.candleGlowLight.shadow.mapSize.width = 512;
@@ -336,7 +336,7 @@ export class CakeScene {
       depthWrite: false,
       depthTest: true,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.35,
     });
 
     [...circle(12, 0.76, 0.42), ...circle(8, 0.42, 0.72)].forEach(pos => {
@@ -353,7 +353,7 @@ export class CakeScene {
       // 主焰（较大，中心偏下）
       for (let i = 0; i < 5; i++) {
         const s = new THREE.Sprite(spriteMat.clone());
-        s.material.opacity = 0.6 + Math.random() * 0.35;
+        s.material.opacity = 0.4 + Math.random() * 0.25;
         const size = 0.04 + Math.random() * 0.05;
         s.scale.set(size, size * 1.4, 1);
         s.position.y = 0.01 + Math.random() * 0.045;
@@ -372,7 +372,7 @@ export class CakeScene {
       particles.push(gl);
 
       grp.add(fg);
-      const pl = new THREE.PointLight('#ff9933', 1.2, 0.8, 1.5);
+      const pl = new THREE.PointLight('#ff9933', 0.7, 0.6, 1.2);
       pl.position.y = 0.32; grp.add(pl);
 
       this.flameGroup.push({ group: fg, light: pl, parentGroup: grp, particles });
@@ -668,8 +668,8 @@ export class CakeScene {
         p.material.opacity = Math.min(0.9, 0.45 + breathe * 0.3);
       }
       if (light) {
-        const ripple = 1 + Math.sin(t * 9 + basePhase) * 0.15 + Math.sin(t * 15 + basePhase * 2) * 0.08;
-        light.intensity = 0.9 * Math.max(0.3, ripple);
+        const ripple = 1 + Math.sin(t * 9 + basePhase) * 0.12 + Math.sin(t * 15 + basePhase * 2) * 0.06;
+        light.intensity = 0.6 * Math.max(0.3, ripple);
       }
     }
   }

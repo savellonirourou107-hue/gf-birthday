@@ -762,8 +762,8 @@ body.overlay-active .music-control {
 
 /* CSS 信封 */
 .css-envelope {
-    --env-w: min(86vw, 350px);
-    --env-h: calc(var(--env-w) * 0.68);
+    --env-w: min(90vw, 400px);
+    --env-h: calc(var(--env-w) * 0.74);
     position: relative;
     width: var(--env-w);
     height: var(--env-h);
