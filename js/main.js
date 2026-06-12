@@ -73,54 +73,23 @@ function initIntroMask() {
         return;
     }
 
-    // 动态创建诗句元素
-    const poemEl = document.createElement('p');
-    poemEl.className = 'intro-poem';
-    poemEl.innerHTML = '两情若是久长时<br>又岂在朝朝暮暮';
-    poemEl.setAttribute('aria-hidden', 'true');
-    introMask.appendChild(poemEl);
-
-    const heartEl = introMask.querySelector('.intro-heart');
-    const copyEl = introMask.querySelector('.intro-copy');
-
     const reveal = () => {
         if (introMask.classList.contains('opening')) return;
 
-        const useGSAP = typeof gsap !== 'undefined';
-        if (useGSAP) {
-            const tl = gsap.timeline({
-                onComplete: () => {
-                    document.body.classList.remove('intro-pending');
-                    document.body.classList.add('intro-ready');
-                    introMask.classList.add('opening');
-                    gsap.to(introMask, {
-                        clipPath: 'circle(0% at 50% 50%)',
-                        opacity: 0,
-                        duration: 1.15,
-                        ease: 'power2.in',
-                        onComplete: () => introMask.remove(),
-                    });
-                },
+        document.body.classList.remove('intro-pending');
+        document.body.classList.add('intro-ready');
+
+        if (typeof gsap !== 'undefined') {
+            gsap.to(introMask, {
+                clipPath: 'circle(0% at 50% 50%)',
+                opacity: 0,
+                duration: 1.15,
+                ease: 'power2.in',
+                onComplete: () => introMask.remove(),
             });
-            tl.to(heartEl, { opacity: 0, scale: 0.8, duration: 0.4, ease: 'power2.in' }, 0)
-              .to(copyEl, { opacity: 0, duration: 0.3 }, 0)
-              .fromTo(poemEl,
-                { opacity: 0, y: 20 },
-                { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' },
-                0.4)
-              .to(poemEl, { opacity: 0, y: -10, duration: 0.6, ease: 'power2.in' }, 1.6);
         } else {
-            // CSS fallback
-            heartEl.classList.add('fading');
-            copyEl.style.opacity = '0';
-            setTimeout(() => { poemEl.classList.add('show'); }, 400);
-            setTimeout(() => { poemEl.classList.add('fading'); }, 1600);
-            setTimeout(() => {
-                document.body.classList.remove('intro-pending');
-                document.body.classList.add('intro-ready');
-                introMask.classList.add('opening');
-                setTimeout(() => { introMask.remove(); }, 1200);
-            }, 2200);
+            introMask.classList.add('opening');
+            setTimeout(() => { introMask.remove(); }, 1200);
         }
     };
 
@@ -793,63 +762,36 @@ function showQuestion(index) {
 }
 
 function handleAnswer(btn, chosenIdx, questionIdx) {
-    const q = quizData[questionIdx];
-    const isCorrect = chosenIdx === q.correct;
+    quizScore++;
     // 禁用所有选项
     const allBtns = quizOptions.querySelectorAll('.quiz-option');
     allBtns.forEach(b => b.style.pointerEvents = 'none');
-
-    if (isCorrect) {
-        quizScore++;
-        btn.classList.add('correct');
-        setTimeout(() => {
-            currentQuestion++;
-            showQuestion(currentQuestion);
-        }, 600);
-    } else {
-        btn.classList.add('wrong');
-        // 高亮正确答案
-        allBtns[q.correct].classList.add('correct');
-        // 显示温柔提示
-        const hint = document.createElement('p');
-        hint.className = 'quiz-hint-text';
-        hint.textContent = quizHintTexts[Math.floor(Math.random() * quizHintTexts.length)];
-        quizOptions.parentElement.appendChild(hint);
-        setTimeout(() => {
-            currentQuestion++;
-            showQuestion(currentQuestion);
-        }, 1200);
-    }
+    // 所有选项都绿（全对）
+    allBtns.forEach(b => b.classList.add('correct'));
+    setTimeout(() => {
+        currentQuestion++;
+        showQuestion(currentQuestion);
+    }, 600);
 }
 
 function showQuizResult() {
     quizQuestion.style.display = 'none';
     quizOptions.style.display = 'none';
-    // 清除旧提示
     const oldHint = quizOptions.parentElement.querySelector('.quiz-hint-text');
     if (oldHint) oldHint.remove();
     quizResult.classList.remove('hidden');
     const dotsContainer = document.querySelector('.quiz-dots');
     const dots = dotsContainer ? dotsContainer.querySelectorAll('.quiz-dot') : document.querySelectorAll('.quiz-dot');
     dots.forEach(d => { d.className = 'quiz-dot done'; });
-    // 更新进度文字
     const quizCount = document.querySelector('.quiz-count');
     if (quizCount) quizCount.textContent = '完成！';
 
-    // 差异化结果文案
     const resultTitle = document.getElementById('quiz-result-title');
-    const resultSubtitle = document.getElementById('quiz-result-subtitle');
-    if (quizScore === 5) {
-        if (resultTitle) resultTitle.textContent = '我就知道你都懂 ❤';
-        // 满分 confetti 大爆发
-        fireConfetti({ particleCount: 120, spread: 100, origin: { y: 0.4, x: 0.5 } });
-        setTimeout(() => fireConfetti({ particleCount: 60, spread: 70, origin: { y: 0.3, x: 0.3 } }), 200);
-        setTimeout(() => fireConfetti({ particleCount: 60, spread: 70, origin: { y: 0.3, x: 0.7 } }), 400);
-    } else if (quizScore >= 3) {
-        if (resultTitle) resultTitle.textContent = '了解得差不多啦，慢慢来~';
-    } else {
-        if (resultTitle) resultTitle.textContent = '还要多多了解阳哦 😄';
-    }
+    if (resultTitle) resultTitle.textContent = '我就知道你都懂 ❤';
+    // 庆祝 confetti
+    fireConfetti({ particleCount: 120, spread: 100, origin: { y: 0.4, x: 0.5 } });
+    setTimeout(() => fireConfetti({ particleCount: 60, spread: 70, origin: { y: 0.3, x: 0.3 } }), 200);
+    setTimeout(() => fireConfetti({ particleCount: 60, spread: 70, origin: { y: 0.3, x: 0.7 } }), 400);
 
     quizSection.scrollTo({ top: 0, behavior: 'smooth' });
 }
