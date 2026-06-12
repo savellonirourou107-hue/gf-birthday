@@ -6,6 +6,12 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
+const MODEL_PATHS = {
+  crane: 'assets/models/origami-crane.glb',
+  cake: 'assets/models/birthday-cake.glb',
+  table: 'assets/models/wood-table.glb',
+};
+
 // ═══ 工具函数 ═══
 const rand = (min, max) => Math.random() * (max - min) + min;
 const eio = t => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t);
@@ -99,9 +105,93 @@ export class CakeScene {
     this.scene.add(this.candleGlowLight);
   }
 
+  _standardMaterial(material) {
+    if (!material) return new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.65, metalness: 0.02 });
+    if (material.isMeshStandardMaterial) {
+      material.roughness = material.roughness ?? 0.65;
+      material.metalness = material.metalness ?? 0.02;
+      material.needsUpdate = true;
+      return material;
+    }
+    return new THREE.MeshStandardMaterial({
+      color: material.color ? material.color.clone() : new THREE.Color('#ffffff'),
+      map: material.map || null,
+      normalMap: material.normalMap || null,
+      roughnessMap: material.roughnessMap || null,
+      metalnessMap: material.metalnessMap || null,
+      emissive: material.emissive ? material.emissive.clone() : new THREE.Color('#000000'),
+      emissiveMap: material.emissiveMap || null,
+      transparent: material.transparent || material.opacity < 1,
+      opacity: material.opacity ?? 1,
+      side: material.side ?? THREE.FrontSide,
+      roughness: material.roughness ?? 0.65,
+      metalness: material.metalness ?? 0.02,
+    });
+  }
+
+  _prepareLoadedModel(root) {
+    root.traverse(ch => {
+      if (!ch.isMesh) return;
+      ch.castShadow = true;
+      ch.receiveShadow = true;
+      if (Array.isArray(ch.material)) ch.material = ch.material.map(m => this._standardMaterial(m));
+      else ch.material = this._standardMaterial(ch.material);
+    });
+    return root;
+  }
+
+  _disposeObject(root) {
+    if (!root) return;
+    root.traverse(ch => {
+      if (ch.geometry) ch.geometry.dispose();
+      if (ch.material) {
+        const mats = Array.isArray(ch.material) ? ch.material : [ch.material];
+        mats.forEach(m => m.dispose());
+      }
+    });
+  }
+
+  _replaceGroupContents(group, object) {
+    while (group.children.length) {
+      const child = group.children[0];
+      group.remove(child);
+      this._disposeObject(child);
+    }
+    group.add(object);
+  }
+
+  _loadModelIntoGroup(url, group, fallback) {
+    const loader = new GLTFLoader();
+    loader.load(
+      url,
+      (gltf) => this._replaceGroupContents(group, this._prepareLoadedModel(gltf.scene)),
+      undefined,
+      () => {
+        if (fallback) fallback(group);
+      },
+    );
+  }
+
+  _cloneModelWithMaterials(root) {
+    const clone = root.clone(true);
+    clone.traverse(ch => {
+      if (!ch.material) return;
+      ch.material = Array.isArray(ch.material)
+        ? ch.material.map(m => m.clone())
+        : ch.material.clone();
+    });
+    return clone;
+  }
+
   // ─── 桌子 ───
   _createTable() {
-    const g = new THREE.Group();
+    this.tableGroup = new THREE.Group();
+    this.scene.add(this.tableGroup);
+    this._loadModelIntoGroup(MODEL_PATHS.table, this.tableGroup, group => this._createFallbackTable(group));
+  }
+
+  _createFallbackTable(targetGroup) {
+    const g = targetGroup || new THREE.Group();
     const tm = new THREE.MeshStandardMaterial({ color: '#8B5E3C', roughness: 0.7, metalness: 0.05 });
     const top = new THREE.Mesh(new THREE.BoxGeometry(4, 0.15, 3), tm);
     top.position.y = -0.075; top.castShadow = top.receiveShadow = true; g.add(top);
@@ -115,12 +205,21 @@ export class CakeScene {
         leg.castShadow = leg.receiveShadow = true;
         g.add(leg);
       });
-    this.scene.add(g);
+    if (!targetGroup) this.scene.add(g);
   }
 
   // ─── 蛋糕 ───
   _createCake() {
-    const g = new THREE.Group();
+    this.cakeGroup = new THREE.Group();
+    this.cakeGroup.position.y = 0.03;
+    this.cakeModelGroup = new THREE.Group();
+    this.cakeGroup.add(this.cakeModelGroup);
+    this.scene.add(this.cakeGroup);
+    this._loadModelIntoGroup(MODEL_PATHS.cake, this.cakeModelGroup, group => this._createFallbackCake(group));
+  }
+
+  _createFallbackCake(targetGroup) {
+    const g = targetGroup || new THREE.Group();
     const cm = new THREE.MeshStandardMaterial({ color: '#FFF5EE', roughness: 0.4, metalness: 0.02 });
     const pm = new THREE.MeshStandardMaterial({ color: '#FAFAFA', roughness: 0.3, metalness: 0.1 });
     const dm = new THREE.MeshStandardMaterial({ color: '#FFB7C5', roughness: 0.35, metalness: 0.02 });
@@ -129,22 +228,27 @@ export class CakeScene {
       m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; g.add(m); return m;
     };
     addM(new THREE.CylinderGeometry(1.2, 1.2, 0.05, 48), pm, 0, 0.025, 0);
-    addM(new THREE.CylinderGeometry(1.0, 1.05, 0.5, 48), cm, 0, 0.3, 0);
+    addM(new THREE.CylinderGeometry(1.0, 1.05, 0.32, 48), cm, 0, 0.22, 0);
     const drip = addM(new THREE.TorusGeometry(1.03, 0.06, 16, 48), dm, 0, 0.55, 0);
     drip.rotation.x = Math.PI / 2;
-    addM(new THREE.CylinderGeometry(0.7, 0.75, 0.4, 48), cm, 0, 0.75, 0);
-    const drip2 = addM(new THREE.TorusGeometry(0.73, 0.05, 16, 48), dm, 0, 0.95, 0);
+    drip.position.y = 0.39;
+    addM(new THREE.CylinderGeometry(0.58, 0.62, 0.25, 48), cm, 0, 0.55, 0);
+    const drip2 = addM(new THREE.TorusGeometry(0.6, 0.05, 16, 48), dm, 0, 0.69, 0);
     drip2.rotation.x = Math.PI / 2;
 
     const bg = new THREE.SphereGeometry(0.06, 16, 16);
     ['#DC143C', '#8B0000', '#FF6347', '#C71585', '#B22222'].forEach((c, i) => {
-      const v = circle(6, 0.25, 0.98)[i];
+      const v = circle(6, 0.35, 0.75)[i];
       addM(bg, new THREE.MeshStandardMaterial({ color: c, roughness: 0.3 }), v.x, v.y, v.z);
     });
     addM(new THREE.SphereGeometry(0.09, 16, 16),
-      new THREE.MeshStandardMaterial({ color: '#DC143C', roughness: 0.3 }), 0, 1.01, 0);
+      new THREE.MeshStandardMaterial({ color: '#DC143C', roughness: 0.3 }), 0, 0.78, 0);
 
-    g.position.y = 0.15; this.cakeGroup = g; this.scene.add(g);
+    if (!targetGroup) {
+      g.position.y = 0.03;
+      this.cakeGroup = g;
+      this.scene.add(g);
+    }
   }
 
   // ─── 蜡烛 ───
@@ -154,7 +258,7 @@ export class CakeScene {
     const cGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.25, 16);
     const hGeo = new THREE.CylinderGeometry(0.04, 0.035, 0.04, 16);
     const wGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.04, 8);
-    [...circle(12, 0.78, 0.58), ...circle(8, 0.52, 0.98)].forEach(pos => {
+    [...circle(12, 0.76, 0.42), ...circle(8, 0.42, 0.72)].forEach(pos => {
       const grp = new THREE.Group();
       grp.position.set(pos.x, pos.y, pos.z);
       const c = new THREE.Mesh(cGeo, cm); c.position.y = 0.125; c.castShadow = true; grp.add(c);
@@ -604,17 +708,21 @@ export class CakeScene {
     this._loadingModel = new Promise((resolve) => {
       const loader = new GLTFLoader();
       loader.load(
-        'https://cdn.jsdelivr.net/gh/code4fukui/kimoduru@main/kimoduru_tex1024.glb',
-        (gltf) => { this.craneModel = gltf.scene; this._loadingModel = null; resolve(this.craneModel); },
+        MODEL_PATHS.crane,
+        (gltf) => {
+          this.craneModel = this._prepareLoadedModel(gltf.scene);
+          this._loadingModel = null;
+          resolve(this.craneModel);
+        },
         undefined,
         () => {
           // 加载失败 → 降级为简易纸飞机
           const g = new THREE.Group();
           const bm = new THREE.MeshStandardMaterial({ color: '#FFF8E7', roughness: 0.5, side: THREE.DoubleSide });
           const body = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.7, 4), bm);
-          body.rotation.x = Math.PI / 2; g.add(body);
+          body.rotation.x = Math.PI / 2; body.castShadow = body.receiveShadow = true; g.add(body);
           const wing = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.35), bm);
-          wing.position.y = 0.04; g.add(wing);
+          wing.position.y = 0.04; wing.castShadow = wing.receiveShadow = true; g.add(wing);
           this.craneModel = g; this._loadingModel = null; resolve(g);
         }
       );
@@ -657,15 +765,15 @@ export class CakeScene {
       this._loadCraneModel().then(() => {
         // 克隆千纸鹤模型，定位到纸张位置
         if (this.craneModel) {
-          this.craneGroup = this.craneModel.clone(true);
+          this.craneGroup = this._cloneModelWithMaterials(this.craneModel);
           this.craneGroup.position.copy(paperPos);
           this.craneGroup.rotation.set(0, 0, 0);
           this.craneGroup.scale.setScalar(0);
-          // 自动计算目标缩放：翼展约 1.8 单位
+          // 自动计算目标缩放：翼展约 1.35 单位，避免飞行时贴到镜头顶部
           const box = new THREE.Box3().setFromObject(this.craneGroup);
           const size = new THREE.Vector3(); box.getSize(size);
           const maxDim = Math.max(size.x, size.y, size.z);
-          s._craneTargetScale = maxDim > 0 ? 1.8 / maxDim : 1.5;
+          s._craneTargetScale = maxDim > 0 ? 1.35 / maxDim : 1.2;
           // 金色发光
           this.craneGroup.traverse(ch => {
             if (ch.material) {

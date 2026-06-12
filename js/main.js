@@ -970,6 +970,39 @@ cakeIconBtn.addEventListener('click', async () => {
 });
 
 // 许愿完成 → 纸鹤 → 吹蜡烛 → 庆祝流程
+function armCandleBlow() {
+    let blowing = false;
+    const targets = [cakeCanvasWrap, cakeScene?.renderer?.domElement].filter(Boolean);
+    const events = ['click', 'pointerdown', 'touchstart'];
+
+    const cleanup = () => {
+        targets.forEach(target => {
+            events.forEach(eventName => {
+                target.removeEventListener(eventName, onBlowIntent);
+            });
+        });
+    };
+
+    const onBlowIntent = async (event) => {
+        if (blowing || !cakeScene) return;
+        blowing = true;
+        event.preventDefault();
+        cleanup();
+        cakeScene.hideHint();
+        await cakeScene.blowCandles();
+        // 吹完蜡烛 → 庆祝 (showConfetti 已在 blowCandles 内部调用)
+        cakeScene.showHint('可以吃蛋糕啦 🎉');
+        // 显示关闭按钮
+        cakeCloseBtn.classList.remove('hidden');
+    };
+
+    targets.forEach(target => {
+        events.forEach(eventName => {
+            target.addEventListener(eventName, onBlowIntent, { passive: false });
+        });
+    });
+}
+
 wishDoneBtn.addEventListener('click', () => {
     wishOverlay.classList.add('hidden');
     if (!cakeScene) return;
@@ -983,18 +1016,7 @@ wishDoneBtn.addEventListener('click', () => {
         await cakeScene.foldToCrane();
         // 纸鹤飞走后 → 提示吹蜡烛
         cakeScene.showHint('吹蜡烛 🎈');
-
-        // 等待用户点击蛋糕画布来吹蜡烛
-        const onCanvasClick = async () => {
-            cakeCanvasWrap.removeEventListener('click', onCanvasClick);
-            cakeScene.hideHint();
-            await cakeScene.blowCandles();
-            // 吹完蜡烛 → 庆祝 (showConfetti 已在 blowCandles 内部调用)
-            cakeScene.showHint('可以吃蛋糕啦 🎉');
-            // 显示关闭按钮
-            cakeCloseBtn.classList.remove('hidden');
-        };
-        cakeCanvasWrap.addEventListener('click', onCanvasClick);
+        armCandleBlow();
     }, 1500);
 });
 
@@ -1007,6 +1029,10 @@ cakeCloseBtn.addEventListener('click', () => {
     cakeSceneContainer.classList.add('hidden');
     document.querySelector('.container').style.display = '';
     setOverlayActive(false);
+});
+
+window.addEventListener('resize', () => {
+    if (cakeScene) cakeScene.onResize();
 });
 
 // ESC 关闭蛋糕场景
